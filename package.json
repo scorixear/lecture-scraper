@@ -1,0 +1,50 @@
+{
+  "name": "template-discordbot-ts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "clean": "rimraf dist/*",
+    "lint": "eslint ./src --ext .ts --fix",
+    "tsc": "tsc",
+    "build": "npm-run-all clean lint tsc",
+    "dev:start": "npm-run-all build start",
+    "dev": "nodemon --watch src -e ts --exec npm run dev:start",
+    "start": "node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scorixear/Template-discordbot-ts.git"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "template"
+  ],
+  "author": "Paul Keller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/scorixear/Template-discordbot-ts/issues"
+  },
+  "homepage": "https://github.com/scorixear/Template-discordbot-ts#readme",
+  "dependencies": {
+    "@discordjs/rest": "^1.2.0",
+    "discord-api-types": "^0.37.11",
+    "discord.js": "^14.5.0",
+    "discord.ts-architecture": "^1.1.0",
+    "dotenv": "^16.0.2",
+    "mariadb": "^3.0.1"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.38.1",
+    "@typescript-eslint/parser": "^5.38.1",
+    "eslint": "^8.24.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "nodemon": "^2.0.20",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.8.4"
+  }
+}
