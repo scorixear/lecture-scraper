@@ -5,13 +5,7 @@ export default class LanguageHandler {
     handlers: {
       command: {
         error: {
-          unknown: 'This command is unknown. Use `$0help` for a list of commands.',
           generic_error: 'There was an Error executing the command `$0$1`.',
-          general_format: 'Your command is not well formated:\n`$0<Command> [args]`',
-          args_format:
-            'Your arguments are not well formated.\n*Hint: Arguments with spaces must be surrounded by one " and cannot contain any additional "*',
-          params_format:
-            "Your options are not well formated.\n*Hint: Options must start with '--' and __can__ contain one additional argument.*"
         },
         permissions: {
           error: 'Invalid permissions to use `$0$1`!'
