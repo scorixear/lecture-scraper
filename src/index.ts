@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
 import { DiscordHandler, InteractionHandler, Logger, TwoWayMap, WARNINGLEVEL } from 'discord.ts-architecture';
 import { GatewayIntentBits, Partials } from 'discord.js';
+import { WebScraper } from './handlers/webScraper';
+import config from './config';
+import LanguageHandler from './handlers/languageHandler';
+import SqlHandler from './handlers/sqlHandler';
 // initialize configuration
 dotenv.config();
 
@@ -9,22 +13,22 @@ declare global {
   var discordHandler: DiscordHandler;
   /* eslint-disable-next-line */
   var interactionHandler: InteractionHandler;
+  /* eslint-disable-next-line */
+  var webScraper: WebScraper;
+  // eslint-disable-next-line no-var
+  var sqlHandler: SqlHandler;
 }
-global.interactionHandler = new InteractionHandler(
-  new TwoWayMap(new Map()),
-  [
-  ],
-  () => {}
-  );
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+global.interactionHandler = new InteractionHandler(new TwoWayMap(new Map()), [], () => {});
+
+global.sqlHandler = new SqlHandler();
 
 global.discordHandler = new DiscordHandler(
   [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
-  [
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.Guilds
-  ]
+  [GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.Guilds]
 );
+
+global.webScraper = new WebScraper();
 
 discordHandler.on('interactionCreate', (interaction) => global.interactionHandler.handle(interaction));
 
@@ -35,7 +39,8 @@ process.on('unhandledRejection', (reason) => {
   Logger.exception('Unhandled Rejection', reason, WARNINGLEVEL.ERROR);
 });
 
-discordHandler.login(process.env.DISCORD_TOKEN ?? '').then(async () => {
+sqlHandler.initDB().then(async () => {
+  await discordHandler.login(process.env.DISCORD_TOKEN ?? '');
   await interactionHandler.init(
     process.env.DISCORD_TOKEN ?? '',
     process.env.CLIENTID ?? '',
@@ -43,5 +48,6 @@ discordHandler.login(process.env.DISCORD_TOKEN ?? '').then(async () => {
     undefined,
     undefined
   );
+  await webScraper.init();
   Logger.info('Bot is ready');
 });
