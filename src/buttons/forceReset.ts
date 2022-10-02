@@ -9,7 +9,7 @@ declare const webScraper: WebScraper;
 
 export default class ForceReset extends ButtonInteractionModel {
   constructor() {
-    super('force-reset', undefined, true);
+    super('force-reset');
   }
 
   override async handle(interaction: ButtonInteraction<CacheType>): Promise<void> {
