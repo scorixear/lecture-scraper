@@ -20,24 +20,6 @@ export class WebScraper {
     return modules;
   }
 
-  public async getModule(semester: string, channel: string): Promise<[Module, Date] | undefined> {
-    const uni_id = await sqlHandler.getUniIdFromChannel(channel);
-    if (!uni_id) return undefined;
-    const [module, date]: [Module | undefined, number] = await sqlHandler.getModule(semester, uni_id);
-    if (!module) return undefined;
-    return [module, new Date(date)];
-  }
-
-  public async checkSemester(semester: string): Promise<Date | undefined> {
-    const date: number | undefined = await sqlHandler.getSemesterDate(semester);
-    if (!date) return undefined;
-    return new Date(date);
-  }
-
-  public async setModules(modules: Module[], semester: string) {
-    await sqlHandler.setModules(semester, modules);
-  }
-
   public async scrapeLectures(url: string): Promise<Module[] | undefined> {
     if (!this.browser) return undefined;
     const page = await this.browser?.newPage();

@@ -46,7 +46,7 @@ export default class Capture extends CommandInteractionModel {
 
     const semester = interaction.options.getString('semester', true);
     const force = interaction.options.getBoolean('force', false);
-    const semesterDate = await webScraper.checkSemester(semester);
+    const semesterDate = await sqlHandler.getSemesterDate(semester);
     if (!force) {
       if (semesterDate) {
         await MessageHandler.replyError({
@@ -54,7 +54,7 @@ export default class Capture extends CommandInteractionModel {
           title: LanguageHandler.language.commands.capture.error.title,
           description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.capture.error.already_existent, [
             semester,
-            semesterDate.toDateString()
+            new Date(semesterDate).toDateString()
           ]),
           components: [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -80,7 +80,7 @@ export default class Capture extends CommandInteractionModel {
     try {
       modules = await webScraper.scrapeLectures(LanguageHandler.replaceArgs(config.websiteUrl, [semester]));
       if (!modules) throw new Error('WebScraper returned undefined');
-      await webScraper.setModules(modules, semester);
+      await sqlHandler.setModules(semester, modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);
       await MessageHandler.followUp({

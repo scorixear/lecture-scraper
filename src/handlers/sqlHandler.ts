@@ -4,6 +4,12 @@ import { Lecture } from '../model/Lecture';
 import { Module } from '../model/Module';
 
 export default class SqlHandler {
+  getModuleNameAndUniId(): { name: string; uni_id: string }[] | PromiseLike<{ name: string; uni_id: string }[]> {
+    throw new Error('Method not implemented.');
+  }
+  getSemesters(): string[] | PromiseLike<string[]> {
+    throw new Error('Method not implemented.');
+  }
   private pool: mysql.Pool;
   constructor() {
     this.pool = mysql.createPool({
@@ -30,7 +36,7 @@ export default class SqlHandler {
         });
       });
 
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         conn?.query(
           'CREATE TABLE IF NOT EXISTS `semester` (`name` VARCHAR(255) NOT NULL, `date` INT NOT NULL, PRIMARY KEY (`name`))',
           (err) => {
@@ -61,6 +67,7 @@ export default class SqlHandler {
             if (err) reject(err);
           }
         );
+        resolve();
       });
     } finally {
       if (conn) conn.end();
@@ -194,8 +201,8 @@ export default class SqlHandler {
       new Array<string>()
     );
   }
-  public async getModule(semester: string, uni_id: string): Promise<[Module | undefined, number]> {
-    return await this.sqlHandle<[Module | undefined, number]>(
+  public async getModule(semester: string, uni_id: string): Promise<[Module, number] | undefined> {
+    return await this.sqlHandle<[Module, number] | undefined>(
       async (conn) => {
         const date = await this.sqlQuery(conn, 'SELECT date FROM semester WHERE name = ?', semester);
         if (!date || !date[0]) throw Error('Semester not found');
@@ -222,23 +229,77 @@ export default class SqlHandler {
       (error) => {
         Logger.exception('Error retrieving Module', error, WARNINGLEVEL.ERROR);
       },
-      [undefined, 0]
+      undefined
     );
   }
 
-  public async getUniIdFromChannel(channel: string): Promise<string | undefined> {
+  public async getModuleFromId(module_id: number): Promise<[Module, number] | undefined> {
+    return await this.sqlHandle<[Module, number] | undefined>(
+      async (conn) => {
+        const sqlModule = await this.sqlQuery(conn, 'SELECT * FROM module WHERE id = ?', module_id);
+        if (!sqlModule || !sqlModule[0]) throw Error('Unknown module');
+        const semester = sqlModule[0].semester;
+        const semesterDate = await this.sqlQuery(conn, 'SELECT date FROM semester WHERE name = ?', semester);
+        if (!semesterDate || !semesterDate[0]) throw Error('Unknown semester');
+        const sqlLecturers = await this.sqlQuery(
+          conn,
+          'SELECT name FROM lecturer WHERE module_id = ?',
+          sqlModule[0].id
+        );
+        const sqlLectures = await this.sqlQuery(conn, 'SELECt * FROM lecture WHERE module_id = ?', sqlModule[0].id);
+        if (!sqlLectures) throw Error('Lectures not found');
+        const lectures: Lecture[] = sqlLectures.map(
+          (sqlLecture: any) =>
+            new Lecture(sqlLecture.type, sqlLecture.day, sqlLecture.place, sqlLecture.time, sqlLecture.group)
+        );
+        return [
+          new Module(sqlModule[0].uni_id, sqlModule[0].name, sqlModule[0].professor, lectures, [...sqlLecturers]),
+          semesterDate[0]
+        ];
+      },
+      (error) => {
+        Logger.exception('Error retrieving module', error, WARNINGLEVEL.ERROR, module_id);
+      },
+      undefined
+    );
+  }
+
+  public async getModuleIdFromChannel(channel: string): Promise<number | undefined> {
     return await this.sqlHandle(
       async (conn) => {
         const module_id = await this.sqlQuery(conn, 'SELECT module_id FROM channel WHERE channel_id = ?', channel);
         if (!module_id || !module_id[0]) throw Error('Channel not found');
-        const uni_id = await this.sqlQuery(conn, 'SELECT uni_id FROM module WHERE module_id = ?', module_id[0]);
-        if (!uni_id || !uni_id[0]) throw Error('Module not found');
-        return uni_id[0];
+        return module_id[0];
       },
       (error) => {
         Logger.exception('Error retrieving channel', error, WARNINGLEVEL.ERROR);
       },
       undefined
+    );
+  }
+
+  public async setChannel(channel: string, uni_id: string, semester: string) {
+    return await this.sqlHandle(
+      async (conn) => {
+        const module_id = await this.sqlQuery(
+          conn,
+          'SELECT id FROM module WHERE semester = ? AND uni_id = ?',
+          semester,
+          uni_id
+        );
+        if (!module_id || !module_id[0]) throw new Error('Unkown module');
+        const channelId = await this.sqlQuery(conn, 'SELECT channel_id WHERE channel_id = ?', channel);
+        if (!channelId || !channelId[0]) {
+          await this.sqlQuery(conn, 'INSERT INTO channel (channel_id, module_id) VALUES ?', [channel, module_id[0]]);
+        } else {
+          await this.sqlQuery(conn, 'UPDATE channel SET module_id = ? WHERE channel_id = ?', module_id[0], channel);
+        }
+        return true;
+      },
+      (error) => {
+        Logger.exception('Error setting channel', error, WARNINGLEVEL.ERROR, channel, uni_id, semester);
+      },
+      false
     );
   }
 

@@ -22,6 +22,43 @@ export default class LanguageHandler {
           title: 'Informationen gesammelt',
           description: 'Erfolgreich alle Modulinformationen extrahiert.'
         }
+      },
+      print: {
+        description: 'Postet die Modulinformationen',
+        error: {
+          title: 'Fehler',
+          not_set: 'Es konnte kein Modul für diesen Channel gefunden werden'
+        },
+        buttons: {
+          set_channel: 'Modul setzen'
+        },
+        success: {
+          lecture: 'Zeit: $0\nTag: $1\nRaum: $2',
+          date: 'Abgerufen am: $0',
+          main_title: 'Modulinfos',
+          main: 'ID: $0\nProfessor: $1',
+          lecturers: 'Dozenten'
+        }
+      },
+      setChannel: {
+        options: {
+          semester: 'Ausgewählte Semester',
+          uni_id: 'Die Modul-ID'
+        },
+        description: 'Setzt das Modul für diesen Channel',
+        error: {
+          title: 'Error',
+          description: 'Das Modul $1 vom Semester $0 existiert nicht.',
+          internal: 'Ein interner Fehler ist aufgetreten beim setzen des Moduls.'
+        },
+        buttons: {
+          show_modules: 'Zeig Module',
+          retry: 'Erneut versuchen'
+        },
+        success: {
+          title: 'Erfolgreich gesetzt',
+          description: 'Das Module $1 aus dem Semester $0 wurde erfolgreich mit diesem Kanal verbunden.'
+        }
       }
     },
     handlers: {
