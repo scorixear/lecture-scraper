@@ -11,26 +11,26 @@ import {
 import { AutocompleteInteractionModel, MessageHandler } from 'discord.ts-architecture';
 import LanguageHandler from '../handlers/languageHandler';
 
-export default class SetChannnel extends AutocompleteInteractionModel {
+export default class SetModuleCommand extends AutocompleteInteractionModel {
   constructor() {
     const commandOptions = [
       new SlashCommandStringOption()
         .setName('semester')
-        .setDescription(LanguageHandler.language.commands.setChannel.options.semester)
+        .setDescription(LanguageHandler.language.commands.setModule.options.semester)
         .setRequired(true)
         .setAutocomplete(true),
       new SlashCommandStringOption()
         .setName('modul-id')
-        .setDescription(LanguageHandler.language.commands.setChannel.options.uni_id)
+        .setDescription(LanguageHandler.language.commands.setModule.options.uni_id)
         .setRequired(true)
         .setAutocomplete(true)
     ];
     super(
-      'setChannel',
-      LanguageHandler.language.commands.setChannel.description,
-      'setChannel ws2022 10-101-101',
+      'setmodule',
+      LanguageHandler.language.commands.setModule.description,
+      'setmodule ws2022 10-101-101',
       'Moderation',
-      'setChannel <semester> <uni-id>',
+      'setmodule <semester> <uni-id>',
       commandOptions
     );
   }
@@ -69,19 +69,11 @@ export default class SetChannnel extends AutocompleteInteractionModel {
     if (!info) {
       await MessageHandler.replyError({
         interaction,
-        title: LanguageHandler.language.commands.setChannel.error.title,
-        description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.setChannel.error.description, [
+        title: LanguageHandler.language.commands.setModule.error.title,
+        description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.setModule.error.description, [
           semester,
           uni_id
-        ]),
-        components: [
-          new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-              .setCustomId('show-modules')
-              .setLabel(LanguageHandler.language.commands.setChannel.buttons.show_modules)
-              .setStyle(ButtonStyle.Primary)
-          )
-        ]
+        ])
       });
       return;
     } else {
@@ -89,13 +81,13 @@ export default class SetChannnel extends AutocompleteInteractionModel {
       if (!success) {
         await MessageHandler.replyError({
           interaction,
-          title: LanguageHandler.language.commands.setChannel.error.title,
-          description: LanguageHandler.language.commands.setChannel.error.internal,
+          title: LanguageHandler.language.commands.setModule.error.title,
+          description: LanguageHandler.language.commands.setModule.error.internal,
           components: [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
               new ButtonBuilder()
-                .setCustomId('rety-channel_' + semester + '_' + uni_id)
-                .setLabel(LanguageHandler.language.commands.setChannel.buttons.retry)
+                .setCustomId('retry-channel_' + semester + '_' + uni_id)
+                .setLabel(LanguageHandler.language.commands.setModule.buttons.retry)
                 .setStyle(ButtonStyle.Danger)
             )
           ]
@@ -104,8 +96,8 @@ export default class SetChannnel extends AutocompleteInteractionModel {
       }
       await MessageHandler.reply({
         interaction,
-        title: LanguageHandler.language.commands.setChannel.success.title,
-        description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.setChannel.success.description, [
+        title: LanguageHandler.language.commands.setModule.success.title,
+        description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.setModule.success.description, [
           semester,
           uni_id
         ]),

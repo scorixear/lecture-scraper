@@ -2,9 +2,15 @@ import dotenv from 'dotenv';
 import { DiscordHandler, InteractionHandler, Logger, TwoWayMap, WARNINGLEVEL } from 'discord.ts-architecture';
 import { GatewayIntentBits, Partials } from 'discord.js';
 import { WebScraper } from './handlers/webScraper';
-import config from './config';
-import LanguageHandler from './handlers/languageHandler';
 import SqlHandler from './handlers/sqlHandler';
+import CaptureCommand from './commands/captureCommand';
+import PrintCommand from './commands/printCommand';
+import SetModuleCommand from './commands/setModuleCommand';
+import ForceResetButton from './buttons/forceResetButton';
+import RetryChannelButton from './buttons/retryChannelButton';
+import SetModuleButton from './buttons/setModuleButton';
+import ModuleSelectMenu from './selectMenus/moduleSelectMenu';
+import SemesterSelectMenu from './selectMenus/semesterSelectMenu';
 // initialize configuration
 dotenv.config();
 
@@ -19,7 +25,23 @@ declare global {
   var sqlHandler: SqlHandler;
 }
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-global.interactionHandler = new InteractionHandler(new TwoWayMap(new Map()), [], () => {});
+global.interactionHandler = new InteractionHandler(
+  [new CaptureCommand(), new PrintCommand(), new SetModuleCommand()],
+  new TwoWayMap(
+    new Map([
+      ['force-reset', new ForceResetButton('force-reset')],
+      ['retry-channel', new RetryChannelButton('retry-channel')],
+      ['set-module', new SetModuleButton('set-module')],
+      ['set-module-two', new SetModuleButton('set-module-two')]
+    ])
+  ),
+  new TwoWayMap(
+    new Map([
+      ['module', new ModuleSelectMenu('module')],
+      ['semester', new SemesterSelectMenu('semester')]
+    ])
+  )
+);
 
 global.sqlHandler = new SqlHandler();
 

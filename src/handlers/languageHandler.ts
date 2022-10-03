@@ -40,7 +40,7 @@ export default class LanguageHandler {
           lecturers: 'Dozenten'
         }
       },
-      setChannel: {
+      setModule: {
         options: {
           semester: 'Ausgewählte Semester',
           uni_id: 'Die Modul-ID'
@@ -52,12 +52,30 @@ export default class LanguageHandler {
           internal: 'Ein interner Fehler ist aufgetreten beim setzen des Moduls.'
         },
         buttons: {
-          show_modules: 'Zeig Module',
           retry: 'Erneut versuchen'
         },
         success: {
           title: 'Erfolgreich gesetzt',
           description: 'Das Module $1 aus dem Semester $0 wurde erfolgreich mit diesem Kanal verbunden.'
+        }
+      }
+    },
+    buttons: {
+      setModule: {
+        title: 'Modul setzen',
+        description: 'Setz das Modul für diesen Channel',
+        semester_placeholder: 'Semester',
+        module_placeholder: 'Modul',
+        set_module: 'Setzen'
+      },
+      setModuleTwo: {
+        error: {
+          not_set: 'Einige Infos sind nicht gesetzt',
+          title: 'Error'
+        },
+        success: {
+          title: 'Modul gesetzt',
+          description: 'Channel erfolgreich mit Module $1 vom Semester $0 verbunden.'
         }
       }
     },

@@ -7,9 +7,9 @@ import { WebScraper } from '../handlers/webScraper';
 
 declare const webScraper: WebScraper;
 
-export default class ForceReset extends ButtonInteractionModel {
-  constructor() {
-    super('force-reset');
+export default class ForceResetButton extends ButtonInteractionModel {
+  constructor(id: string) {
+    super(id);
   }
 
   override async handle(interaction: ButtonInteraction<CacheType>): Promise<void> {
@@ -21,9 +21,9 @@ export default class ForceReset extends ButtonInteractionModel {
     const semester = interaction.customId.split('_')[1];
     let modules: Module[] | undefined;
     try {
-      modules = await webScraper.scrapeLectures(LanguageHandler.replaceArgs(config.websiteUrl, [semester]));
+      modules = await webScraper.scrapeLectures(config.websiteUrl, semester);
       if (!modules) throw new Error('WebScraper returned undefined');
-      await sqlHandler.setModules(semester, modules);
+      await sqlHandler.setModules(modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);
       await MessageHandler.followUp({

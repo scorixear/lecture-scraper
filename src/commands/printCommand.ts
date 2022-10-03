@@ -2,8 +2,9 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CacheType, ChatInputComma
 import { CommandInteractionModel, MessageHandler } from 'discord.ts-architecture';
 import { Module } from '../model/Module';
 import LanguageHandler from '../handlers/languageHandler';
+import { LectureType } from '../model/LectureType';
 
-export default class Print extends CommandInteractionModel {
+export default class PrintCommand extends CommandInteractionModel {
   constructor() {
     const commandOptions: any[] = [];
     super('print', LanguageHandler.language.commands.print.description, 'print', 'Moderation', 'print', commandOptions);
@@ -16,11 +17,11 @@ export default class Print extends CommandInteractionModel {
       return;
     }
     const module_id = await sqlHandler.getModuleIdFromChannel(interaction.channelId);
-    let info: [Module, number] | undefined = undefined;
+    let module: Module | undefined = undefined;
     if (module_id) {
-      info = await sqlHandler.getModuleFromId(module_id);
+      module = await sqlHandler.getModuleFromId(module_id);
     }
-    if (!info) {
+    if (!module) {
       await MessageHandler.replyError({
         interaction,
         title: LanguageHandler.language.commands.print.error.title,
@@ -28,7 +29,7 @@ export default class Print extends CommandInteractionModel {
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-              .setCustomId('set-channel')
+              .setCustomId('set-module')
               .setLabel(LanguageHandler.language.commands.print.buttons.set_channel)
               .setStyle(ButtonStyle.Primary)
           )
@@ -36,22 +37,32 @@ export default class Print extends CommandInteractionModel {
       });
       return;
     }
-    const [module, dateNumber] = info;
-    const lectureCategories = module.lectures.map((lecture) => ({
-      title: lecture.type + ',' + lecture.group,
-      text: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.lecture, [
-        lecture.time ?? '',
-        lecture.day,
-        lecture.place
-      ]),
-      inline: true
-    }));
+    const lectureCategories: { title: string; text: string; inline: boolean }[] = [];
+    let lastCategory: LectureType | undefined = undefined;
+    module.lectures.forEach((lecture) => {
+      let inline = true;
+      if (lastCategory !== lecture.type) {
+        lastCategory = lecture.type;
+        inline = false;
+      }
+      lectureCategories.push({
+        title: lecture.type + (lecture.group ? ', ' + lecture.group : ''),
+        text: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.lecture, [
+          lecture.time ?? '',
+          lecture.day,
+          lecture.place
+        ]),
+        inline: inline
+      });
+    });
+
     await MessageHandler.reply({
       interaction,
       title: module.displayName,
       description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.date, [
-        new Date(dateNumber).toDateString()
+        module.date.toDateString()
       ]),
+      color: 0x2f3136,
       categories: [
         {
           title: LanguageHandler.language.commands.print.success.main_title,

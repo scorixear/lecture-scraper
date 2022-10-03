@@ -14,7 +14,7 @@ import { Module } from '../model/Module';
 
 declare const webScraper: WebScraper;
 
-export default class Capture extends CommandInteractionModel {
+export default class CaptureCommand extends CommandInteractionModel {
   constructor() {
     const commandOptions: any[] = [
       new SlashCommandStringOption()
@@ -74,13 +74,14 @@ export default class Capture extends CommandInteractionModel {
       description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.capture.success.start_description, [
         semester
       ]),
+      color: 0xffd500,
       ephemeral: true
     });
     let modules: Module[] | undefined;
     try {
-      modules = await webScraper.scrapeLectures(LanguageHandler.replaceArgs(config.websiteUrl, [semester]));
+      modules = await webScraper.scrapeLectures(config.websiteUrl, semester);
       if (!modules) throw new Error('WebScraper returned undefined');
-      await sqlHandler.setModules(semester, modules);
+      await sqlHandler.setModules(modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);
       await MessageHandler.followUp({

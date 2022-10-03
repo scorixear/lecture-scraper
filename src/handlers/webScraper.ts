@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer';
 import { Browser } from 'puppeteer';
 import { Lecture } from '../model/Lecture';
 import { Module } from '../model/Module';
+import LanguageHandler from './languageHandler';
 
 export class WebScraper {
   private browser?: Browser;
@@ -20,10 +21,10 @@ export class WebScraper {
     return modules;
   }
 
-  public async scrapeLectures(url: string): Promise<Module[] | undefined> {
+  public async scrapeLectures(url: string, semester: string): Promise<Module[] | undefined> {
     if (!this.browser) return undefined;
     const page = await this.browser?.newPage();
-    await page?.goto(url);
+    await page?.goto(LanguageHandler.replaceArgs(url, [semester]));
     // Selecting all base units
 
     const moduleElements = await page?.$$('.n-studgang-unit .n-unit');
@@ -37,6 +38,7 @@ export class WebScraper {
 
     const moduleInfos = await Promise.all(modulePromises);
     const modules: Module[] = [];
+    const date = new Date();
     for (let i = 0; i < moduleInfos.length; i += 4) {
       const displayName = moduleInfos[i] as string | null;
       const idEntry = moduleInfos[i + 1] as puppeteer.ElementHandle<Element> | null;
@@ -60,7 +62,7 @@ export class WebScraper {
       }
       if (!id || id.trim() === '') continue;
       const prof = professor ?? undefined;
-      const module = new Module(id, displayName, prof);
+      const module = new Module(id, displayName, semester, date, prof);
       const lecturePromises: Promise<any>[] = [];
       lecturesElements.forEach((lecture) => {
         lecturePromises.push(lecture.$eval('.s_termin_typ', (element) => element.textContent)); // Type
