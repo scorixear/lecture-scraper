@@ -10,13 +10,16 @@ export default class ModuleSelectMenu extends SelectMenuInteractionModel {
   override async handle(interaction: SelectMenuInteraction<CacheType>): Promise<void> {
     await interaction.deferUpdate();
     const module = interaction.values[0];
-    const current = SetModuleButton.selections.get([interaction.message.channelId, interaction.message.id]);
+    const current = SetModuleButton.selections.get(interaction.message.channelId)?.get(interaction.message.id);
 
     if (current) {
       current[1] = module;
-      SetModuleButton.selections.set([interaction.message.channelId, interaction.message.id], current);
+      SetModuleButton.selections.get(interaction.message.channelId)?.set(interaction.message.id, current);
     } else {
-      SetModuleButton.selections.set([interaction.message.channelId, interaction.message.id], [undefined, module]);
+      SetModuleButton.selections.set(
+        interaction.message.channelId,
+        new Map([[interaction.message.id, [undefined, module]]])
+      );
     }
   }
 }

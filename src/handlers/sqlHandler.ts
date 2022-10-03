@@ -95,7 +95,11 @@ export default class SqlHandler {
             );
           }
           const sqlLecturers = module.lecturers.map((lecturer) => [mod[0].id, lecturer]);
-          await this.sqlQuery(conn, 'INSERT INTO `lecturer` (`module_id`, `name`) VALUES ?', sqlLecturers);
+          try {
+            await this.sqlQuery(conn, 'INSERT INTO `lecturer` (`module_id`, `name`) VALUES ?', sqlLecturers);
+          } catch {
+            // ignore
+          }
           const sqlLectures = module.lectures.map((lecture) => [
             mod[0].id,
             lecture.type,

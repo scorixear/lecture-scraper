@@ -11,6 +11,7 @@ import RetryChannelButton from './buttons/retryChannelButton';
 import SetModuleButton from './buttons/setModuleButton';
 import ModuleSelectMenu from './selectMenus/moduleSelectMenu';
 import SemesterSelectMenu from './selectMenus/semesterSelectMenu';
+import SetModuleTwoButton from './buttons/setModuleTwoButton';
 // initialize configuration
 dotenv.config();
 
@@ -32,7 +33,7 @@ global.interactionHandler = new InteractionHandler(
       ['force-reset', new ForceResetButton('force-reset')],
       ['retry-channel', new RetryChannelButton('retry-channel')],
       ['set-module', new SetModuleButton('set-module')],
-      ['set-module-two', new SetModuleButton('set-module-two')]
+      ['set-two-module', new SetModuleTwoButton('set-two-module')]
     ])
   ),
   new TwoWayMap(

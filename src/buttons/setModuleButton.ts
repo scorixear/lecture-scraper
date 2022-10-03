@@ -11,7 +11,7 @@ import { ButtonInteractionModel, MessageHandler } from 'discord.ts-architecture'
 import LanguageHandler from '../handlers/languageHandler';
 
 export default class SetModuleButton extends ButtonInteractionModel {
-  public static selections: Map<[string, string], [string | undefined, string | undefined]>;
+  public static selections: Map<string, Map<string, [string | undefined, string | undefined]>> = new Map();
   constructor(id: string) {
     super(id);
   }
@@ -47,11 +47,12 @@ export default class SetModuleButton extends ButtonInteractionModel {
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId('set-module-two')
+            .setCustomId('set-two-module')
             .setLabel(LanguageHandler.language.buttons.setModule.set_module)
             .setStyle(ButtonStyle.Success)
         )
-      ]
+      ],
+      ephemeral: true
     });
   }
 }

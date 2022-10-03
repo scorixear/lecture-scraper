@@ -15,7 +15,7 @@ export default class SetModuleTwoButton extends ButtonInteractionModel {
       return;
     }
 
-    const selection = SetModuleButton.selections.get([interaction.message.channelId, interaction.message.id]);
+    const selection = SetModuleButton.selections.get(interaction.message.channelId)?.get(interaction.message.id);
     if (!selection || !selection[0] || !selection[1]) {
       await interaction.reply({
         content: LanguageHandler.language.buttons.setModuleTwo.error.not_set,
@@ -41,7 +41,9 @@ export default class SetModuleTwoButton extends ButtonInteractionModel {
       ]),
       ephemeral: true
     });
-    SetModuleButton.selections.delete([interaction.message.channelId, interaction.message.id]);
-    await interaction.message.delete();
+    SetModuleButton.selections.get(interaction.message.channelId)?.delete(interaction.message.id);
+    if (SetModuleButton.selections.get(interaction.message.channelId)?.size ?? 0 == 0) {
+      SetModuleButton.selections.delete(interaction.message.channelId);
+    }
   }
 }
