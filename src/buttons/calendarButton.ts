@@ -16,6 +16,7 @@ export default class CalendarButton extends ButtonInteractionModel {
     } catch {
       return;
     }
+    Logger.info('Creating calender for ' + (interaction.member as GuildMember | undefined)?.displayName);
     const roles = (interaction.member?.roles as GuildMemberRoleManager | undefined)?.cache;
     const uni_ids: string[] = [];
     for (const role of roles ?? []) {
@@ -24,10 +25,16 @@ export default class CalendarButton extends ButtonInteractionModel {
         uni_ids.push(sqlUni);
       }
     }
+    Logger.info(`Found ${uni_ids.length} uni_ids for ` + (interaction.member as GuildMember | undefined)?.displayName);
     const semester = await sqlHandler.getConfig('semester');
     const startDate = new Date(parseInt((await sqlHandler.getConfig('startdate')) ?? '0'));
     const endDate = new Date(parseInt((await sqlHandler.getConfig('enddate')) ?? '0'));
-    if (!semester) return;
+    if (!semester) {
+      Logger.warn(
+        'Semester Configuration not found for ' + (interaction.member as GuildMember | undefined)?.displayName
+      );
+      return;
+    }
 
     const modules: Module[] = [];
     for (const uni_id of uni_ids) {
@@ -36,6 +43,8 @@ export default class CalendarButton extends ButtonInteractionModel {
         modules.push(module);
       }
     }
+
+    Logger.info(`Found ${modules.length} modules for ` + (interaction.member as GuildMember | undefined)?.displayName);
 
     const value = await new Promise<string>((resolve, reject) => {
       const events: EventAttributes[] = [];
@@ -176,7 +185,9 @@ export default class CalendarButton extends ButtonInteractionModel {
           });
         });
       });
-
+      Logger.info(
+        `Created ${events.length} events for ` + (interaction.member as GuildMember | undefined)?.displayName
+      );
       createEvents(events, (error, value) => {
         if (error) reject(error);
         resolve(value);
