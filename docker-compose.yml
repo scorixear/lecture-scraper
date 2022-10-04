@@ -11,7 +11,7 @@ networks:
 services:
   mysql:
     image: mysql:8.0
-    restart: always
+    restart: on-failure
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: lectures
@@ -29,7 +29,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin
-    restart: always
+    restart: on-failure
     expose:
       - "40001"
     ports:

@@ -81,6 +81,7 @@ export default class CaptureCommand extends CommandInteractionModel {
     try {
       modules = await webScraper.scrapeLectures(config.websiteUrl, semester);
       if (!modules) throw new Error('WebScraper returned undefined');
+      modules = CaptureCommand.uniq_fast(modules);
       await sqlHandler.setModules(modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);
@@ -100,5 +101,20 @@ export default class CaptureCommand extends CommandInteractionModel {
       ]),
       ephemeral: true
     });
+  }
+
+  public static uniq_fast(a: Module[]): Module[] {
+    const seen = new Map<string, number>();
+    const out: Module[] = [];
+    const len = a.length;
+    let j = 0;
+    for (let i = 0; i < len; i++) {
+      const item = a[i];
+      if (seen.get(item.id) !== 1) {
+        seen.set(item.id, 1);
+        out[j++] = item;
+      }
+    }
+    return out;
   }
 }

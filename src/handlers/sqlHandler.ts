@@ -45,6 +45,14 @@ export default class SqlHandler {
         conn,
         'CREATE TABLE IF NOT EXISTS `channel` (`channel_id` VARCHAR(255) NOT NULL, `module_id` VARCHAR(255) NOT NULL, PRIMARY KEY (`channel_id`))'
       );
+      await this.sqlQuery(
+        conn,
+        'CREATE TABLE IF NOT EXISTS `role` (`role_id` VARCHAR(255) NOT NULL, `uni_id` VARCHAR(255) NOT NULL, PRIMARY KEY (`role_id`, `uni_id`))'
+      );
+      await this.sqlQuery(
+        conn,
+        'CREATE TABLE IF NOT EXISTS `config` (`label` VARCHAR(255) NOT NULL, `value` VARCHAR(255), PRIMARY KEY(`label`))'
+      );
     } catch (err) {
       Logger.exception('Error creating tables', err, WARNINGLEVEL.ERROR);
       throw err;
@@ -52,6 +60,75 @@ export default class SqlHandler {
       if (conn) conn.release();
     }
     Logger.info('Initialized Database');
+  }
+
+  public async setConfig(label: string, value?: string) {
+    return await this.sqlHandle(
+      async (conn) => {
+        const found = await this.sqlQuery(conn, 'SELECT `value` FROM `config` WHERE `label` = ?', label);
+        if (found && found[0]) {
+          await this.sqlQuery(conn, 'UPDATE `config` SET `value` = ? WHERE `label` = ?', value, label);
+          return;
+        }
+        await this.sqlQuery(conn, 'INSERT INTO `config` (`label`, `value`) VALUES (?, ?)', label, value);
+      },
+      (error) => {
+        Logger.exception('Error setting config', error, WARNINGLEVEL.ERROR, label, value);
+      },
+      undefined
+    );
+  }
+
+  public async getConfig(label: string): Promise<string | undefined> {
+    return await this.sqlHandle(
+      async (conn) => {
+        const found = await this.sqlQuery(conn, 'SELECT `value` FROM `config` WHERE `label` = ?', label);
+        if (found && found[0]) {
+          return found[0].value;
+        }
+        return undefined;
+      },
+      (error) => {
+        Logger.exception('Error getting config', error, WARNINGLEVEL.ERROR, label);
+      },
+      undefined
+    );
+  }
+  public async setRole(role: string, uni_id: string) {
+    return await this.sqlHandle(
+      async (conn) => {
+        const found = await this.sqlQuery(
+          conn,
+          'SELECT * FROM `role` WHERE `role_id` = ? OR `uni_id` = ?',
+          role,
+          uni_id
+        );
+        if (found && found[0]) {
+          await this.sqlQuery(conn, 'DELETE FROM `role` WHERE `role_id` = ? OR `uni_id` = ?', role, uni_id);
+        }
+        await this.sqlQuery(conn, 'INSERT INTO `role` (`role_id`, `uni_id`) VALUES (?, ?)', role, uni_id);
+      },
+      (error) => {
+        Logger.exception('Error setting role', error, WARNINGLEVEL.ERROR, role, uni_id);
+      },
+      undefined
+    );
+  }
+
+  public async getUniIdFromRole(role: string): Promise<string | undefined> {
+    return await this.sqlHandle(
+      async (conn) => {
+        const found = await this.sqlQuery(conn, 'SELECT `uni_id` FROM `role` WHERE `role_id` = ?', role);
+        if (found && found[0]) {
+          return found[0].uni_id;
+        }
+        return undefined;
+      },
+      (error) => {
+        Logger.exception('Error retrieving role', error, WARNINGLEVEL.ERROR, role);
+      },
+      undefined
+    );
   }
 
   public async setModules(modules: Module[]) {

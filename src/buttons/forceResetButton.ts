@@ -4,6 +4,7 @@ import { Module } from '../model/Module';
 import config from '../config';
 import LanguageHandler from '../handlers/languageHandler';
 import { WebScraper } from '../handlers/webScraper';
+import CaptureCommand from '../commands/captureCommand';
 
 declare const webScraper: WebScraper;
 
@@ -23,6 +24,7 @@ export default class ForceResetButton extends ButtonInteractionModel {
     try {
       modules = await webScraper.scrapeLectures(config.websiteUrl, semester);
       if (!modules) throw new Error('WebScraper returned undefined');
+      modules = CaptureCommand.uniq_fast(modules);
       await sqlHandler.setModules(modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);

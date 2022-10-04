@@ -12,6 +12,10 @@ import SetModuleButton from './buttons/setModuleButton';
 import ModuleSelectMenu from './selectMenus/moduleSelectMenu';
 import SemesterSelectMenu from './selectMenus/semesterSelectMenu';
 import SetModuleTwoButton from './buttons/setModuleTwoButton';
+import CalenderCommand from './commands/calenderCommand';
+import LinkRoleCommand from './commands/linkRoleCommand';
+import CalendarButton from './buttons/calendarButton';
+import SetConfigCommand from './commands/setConfigCommand';
 // initialize configuration
 dotenv.config();
 
@@ -27,13 +31,21 @@ declare global {
 }
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 global.interactionHandler = new InteractionHandler(
-  [new CaptureCommand(), new PrintCommand(), new SetModuleCommand()],
+  [
+    new CaptureCommand(),
+    new PrintCommand(),
+    new SetModuleCommand(),
+    new CalenderCommand(),
+    new LinkRoleCommand(),
+    new SetConfigCommand()
+  ],
   new TwoWayMap(
     new Map([
       ['force-reset', new ForceResetButton('force-reset')],
       ['retry-channel', new RetryChannelButton('retry-channel')],
       ['set-module', new SetModuleButton('set-module')],
-      ['set-two-module', new SetModuleTwoButton('set-two-module')]
+      ['set-two-module', new SetModuleTwoButton('set-two-module')],
+      ['calendar', new CalendarButton('calendar')]
     ])
   ),
   new TwoWayMap(

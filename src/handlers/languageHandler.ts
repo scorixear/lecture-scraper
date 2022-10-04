@@ -58,6 +58,39 @@ export default class LanguageHandler {
           title: 'Erfolgreich gesetzt',
           description: 'Das Module $1 aus dem Semester $0 wurde erfolgreich mit diesem Kanal verbunden.'
         }
+      },
+      linkrole: {
+        description: 'Verbindet Rollen mit Modulen',
+        options: {
+          role: 'Die verbundene Rolle',
+          module: 'Die ID des Moduls'
+        },
+        success: {
+          title: 'Rolle verbunden',
+          description: 'Erfolgreich die Rolle <@&$0> mit dem Modul `$1` verbunden'
+        }
+      },
+      calendar: {
+        description: 'Postet einen Kalender-Button',
+        success: {
+          title: 'Stundenplan Erstellung',
+          description:
+            'Erstelle deinen eigenen persönlichen Stundenplan.\nEinfach Kurse auswählen und auf den Button klicken.'
+        },
+        buttons: {
+          calendar: 'Stundenplan Erstellen'
+        }
+      },
+      setconfig: {
+        description: 'Setzt Konfigurationswerte',
+        options: {
+          label: 'Das Werte-Label',
+          value: 'Der Wert'
+        },
+        success: {
+          title: 'Konfiguration angepasst',
+          description: 'Die Konfiguration `$0` wurde auf `$1` gesetzt'
+        }
       }
     },
     buttons: {
@@ -76,6 +109,12 @@ export default class LanguageHandler {
         success: {
           title: 'Modul gesetzt',
           description: 'Channel erfolgreich mit Module $1 vom Semester $0 verbunden.'
+        }
+      },
+      calendar: {
+        success: {
+          title: 'Stundenplan erstellt',
+          description: 'Dein Stundenplan wurde erstellt und ist im Anhang.'
         }
       }
     },
