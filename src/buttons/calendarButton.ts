@@ -164,7 +164,7 @@ export default class CalendarButton extends ButtonInteractionModel {
           }
 
           events.push({
-            title: `${lecture.type}: ${module.displayName}`,
+            title: `${lecture.type}: ${module.displayName}${lecture.group ? ' [' + lecture.group + ']' : ''}`,
             start: start,
             end: end,
             description: `ID: ${module.id}\nProfessor: ${module.professor}`,
