@@ -1,8 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CacheType, ChatInputCommandInteraction } from 'discord.js';
 import { CommandInteractionModel, MessageHandler } from 'discord.ts-architecture';
-import { Module } from '../model/Module';
+import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
-import { LectureType } from '../model/LectureType';
+import { Lecture, Lecturer, LectureType, Module } from '@prisma/client';
 
 export default class PrintCommand extends CommandInteractionModel {
   constructor() {
@@ -16,10 +16,10 @@ export default class PrintCommand extends CommandInteractionModel {
     } catch (error) {
       return;
     }
-    const module_id = await sqlHandler.getModuleIdFromChannel(interaction.channelId);
-    let module: Module | undefined = undefined;
+    const module_id = await sqlClient.getModuleIdFromChannel(interaction.channelId);
+    let module: (Module & { lectures: Lecture[]; lecturers: Lecturer[] }) | null = null;
     if (module_id) {
-      module = await sqlHandler.getModuleFromId(module_id);
+      module = await sqlClient.getMostRecentModule(module_id);
     }
     if (!module) {
       await MessageHandler.replyError({
@@ -49,8 +49,8 @@ export default class PrintCommand extends CommandInteractionModel {
         title: lecture.type + (lecture.group ? ', ' + lecture.group : ''),
         text: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.lecture, [
           lecture.time ?? '',
-          lecture.day,
-          lecture.place
+          lecture.day ?? '',
+          lecture.place ?? ''
         ]),
         inline: inline
       });
@@ -58,16 +58,16 @@ export default class PrintCommand extends CommandInteractionModel {
 
     await MessageHandler.reply({
       interaction,
-      title: module.displayName,
+      title: module.name ?? undefined,
       description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.date, [
-        module.date.toDateString()
+        new Date(Number(module.date)).toDateString()
       ]),
       color: 0x2f3136,
       categories: [
         {
           title: LanguageHandler.language.commands.print.success.main_title,
           text: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.main, [
-            module.id,
+            module.uni_id,
             module.professor ?? ''
           ]),
           inline: false
@@ -75,7 +75,7 @@ export default class PrintCommand extends CommandInteractionModel {
         ...lectureCategories,
         {
           title: LanguageHandler.language.commands.print.success.lecturers,
-          text: module.lecturers.join('\n'),
+          text: module.lecturers.map((l) => l.name).join('\n'),
           inline: false
         }
       ]

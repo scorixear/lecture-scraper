@@ -1,7 +1,7 @@
+import { Lecture, Lecturer, Module } from '@prisma/client';
 import puppeteer from 'puppeteer';
 import { Browser } from 'puppeteer';
-import { Lecture } from '../model/Lecture';
-import { Module } from '../model/Module';
+import { StringToLectureType } from '../buttons/calendarButton';
 import LanguageHandler from './languageHandler';
 
 export class WebScraper {
@@ -21,7 +21,10 @@ export class WebScraper {
     return modules;
   }
 
-  public async scrapeLectures(url: string, semester: string): Promise<Module[] | undefined> {
+  public async scrapeLectures(
+    url: string,
+    semester: string
+  ): Promise<(Module & { lecturers: Lecturer[]; lectures: Lecture[] })[] | undefined> {
     if (!this.browser) return undefined;
     const page = await this.browser?.newPage();
     await page?.goto(LanguageHandler.replaceArgs(url, [semester]));
@@ -37,7 +40,7 @@ export class WebScraper {
     });
 
     const moduleInfos = await Promise.all(modulePromises);
-    const modules: Module[] = [];
+    const modules: (Module & { lectures: Lecture[]; lecturers: Lecturer[] })[] = [];
     const date = new Date();
     for (let i = 0; i < moduleInfos.length; i += 4) {
       const displayName = moduleInfos[i] as string | null;
@@ -61,8 +64,16 @@ export class WebScraper {
         continue;
       }
       if (!id || id.trim() === '') continue;
-      const prof = professor ?? undefined;
-      const module = new Module(id, displayName, semester, date, prof);
+      const module = {
+        id: 0,
+        uni_id: id,
+        name: displayName,
+        semester,
+        date: date.getTime() as unknown as bigint,
+        professor: professor,
+        lecturers: new Array<Lecturer>(),
+        lectures: new Array<Lecture>()
+      };
       const lecturePromises: Promise<any>[] = [];
       lecturesElements.forEach((lecture) => {
         lecturePromises.push(lecture.$eval('.s_termin_typ', (element) => element.textContent)); // Type
@@ -79,10 +90,10 @@ export class WebScraper {
       const lecturers: Set<string> = new Set();
       for (let j = 0; j <= lectureValues.length; j += 6) {
         const typeString = (lectureValues[j] as string | null)?.split(',')[0];
-        const type = Lecture.getKeyByValue(typeString ?? '');
+        const type = StringToLectureType.get(typeString ?? '');
         if (!type) continue;
-        const group = (lectureValues[j] as string | null)?.split(',').at(1);
-        let time: string | undefined = undefined;
+        const group = (lectureValues[j] as string | null)?.split(',').at(1) ?? null;
+        let time: string | null = null;
         if ((lectureValues[j + 1] as string | null) !== null) {
           time = (lectureValues[j + 1] as string | null) + '-' + (lectureValues[j + 2] as string | null);
         }
@@ -93,16 +104,24 @@ export class WebScraper {
         const unfilteredLecturers = lectureValues[j + 5] as (string | null)[];
         const filteredLecturers = unfilteredLecturers.filter((lecturer) => lecturer !== null) as string[];
         if (filteredLecturers.length === 0) continue;
-        const lecture = new Lecture(type, day, place, time, group);
+        const lecture = {
+          id: 0,
+          module_id: 0,
+          type,
+          day,
+          place,
+          time,
+          group
+        };
         lectures.push(lecture);
         filteredLecturers.forEach((l) => lecturers.add(l));
       }
       const [first] = lecturers;
-      if (module.professor === undefined || module.professor.trim() === '') {
+      if (module.professor === null || module.professor.trim() === '') {
         module.professor = first;
       }
       module.lectures = lectures;
-      module.lecturers = [...lecturers];
+      module.lecturers = [...lecturers].map((l) => ({ name: l, module_id: 0 }));
       modules.push(module);
     }
     return modules;

@@ -1,17 +1,9 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonInteraction,
-  ButtonStyle,
-  CacheType,
-  SelectMenuBuilder,
-  SelectMenuOptionBuilder
-} from 'discord.js';
+import { ActionRowBuilder, ButtonInteraction, CacheType, SelectMenuBuilder, SelectMenuOptionBuilder } from 'discord.js';
 import { ButtonInteractionModel, MessageHandler } from 'discord.ts-architecture';
+import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
 
 export default class SetModuleButton extends ButtonInteractionModel {
-  public static selections: Map<string, Map<string, [string | undefined, string | undefined]>> = new Map();
   constructor(id: string) {
     super(id);
   }
@@ -22,11 +14,8 @@ export default class SetModuleButton extends ButtonInteractionModel {
     } catch {
       return;
     }
-    const semester = (await sqlHandler.getSemesters()).map((s) => {
-      return new SelectMenuOptionBuilder().setLabel(s).setValue(s);
-    });
-    const modules = (await sqlHandler.getModuleNameAndUniId()).map((m) => {
-      return new SelectMenuOptionBuilder().setLabel(m.name).setValue(m.uni_id);
+    const modules = (await sqlClient.getModuleNameAndUniIds())?.map((m) => {
+      return new SelectMenuOptionBuilder().setLabel(m.name ?? '').setValue(m.uni_id);
     });
     await MessageHandler.reply({
       interaction,
@@ -35,21 +24,9 @@ export default class SetModuleButton extends ButtonInteractionModel {
       components: [
         new ActionRowBuilder<SelectMenuBuilder>().addComponents(
           new SelectMenuBuilder()
-            .setCustomId('semester')
-            .setPlaceholder(LanguageHandler.language.buttons.setModule.semester_placeholder)
-            .addOptions(semester)
-        ),
-        new ActionRowBuilder<SelectMenuBuilder>().addComponents(
-          new SelectMenuBuilder()
             .setCustomId('module')
             .setPlaceholder(LanguageHandler.language.buttons.setModule.module_placeholder)
-            .addOptions(modules)
-        ),
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId('set-two-module')
-            .setLabel(LanguageHandler.language.buttons.setModule.set_module)
-            .setStyle(ButtonStyle.Success)
+            .addOptions(modules ?? [])
         )
       ],
       ephemeral: true

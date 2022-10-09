@@ -1,11 +1,12 @@
 import { ButtonInteraction, CacheType, GuildMember, GuildMemberRoleManager } from 'discord.js';
 import { ButtonInteractionModel, Logger, MessageHandler } from 'discord.ts-architecture';
-import { Module } from '../model/Module';
 import LanguageHandler from '../handlers/languageHandler';
 import { createEvents, EventAttributes } from 'ics';
+import { sqlClient } from '../handlers/sqlHandler';
 import fs from 'fs';
+import { Lecture, Lecturer, LectureType, Module } from '@prisma/client';
 
-export default class CalendarButton extends ButtonInteractionModel {
+export class CalendarButton extends ButtonInteractionModel {
   constructor(id: string) {
     super(id, 2000, true);
   }
@@ -20,25 +21,27 @@ export default class CalendarButton extends ButtonInteractionModel {
     const roles = (interaction.member?.roles as GuildMemberRoleManager | undefined)?.cache;
     const uni_ids: string[] = [];
     for (const role of roles ?? []) {
-      const sqlUni = await sqlHandler.getUniIdFromRole(role[1].id);
+      const sqlUni = await sqlClient.getRole(role[1].id);
       if (sqlUni) {
-        uni_ids.push(sqlUni);
+        uni_ids.push(sqlUni.uni_id);
       }
     }
     Logger.info(`Found ${uni_ids.length} uni_ids for ` + (interaction.member as GuildMember | undefined)?.displayName);
-    const semester = await sqlHandler.getConfig('semester');
-    const startDate = new Date(parseInt((await sqlHandler.getConfig('startdate')) ?? '0'));
-    const endDate = new Date(parseInt((await sqlHandler.getConfig('enddate')) ?? '0'));
-    if (!semester) {
+    const semester = await sqlClient.getConfig('semester');
+    const sqlStart = await sqlClient.getConfig('startdate');
+    const sqlEnd = await sqlClient.getConfig('enddate');
+    const startDate = new Date(parseInt(sqlStart ? sqlStart.value ?? '0' : '0'));
+    const endDate = new Date(parseInt(sqlEnd ? sqlEnd.value ?? '0' : '0'));
+    if (!semester || !semester.value) {
       Logger.warn(
         'Semester Configuration not found for ' + (interaction.member as GuildMember | undefined)?.displayName
       );
       return;
     }
 
-    const modules: Module[] = [];
+    const modules: (Module & { lecturers: Lecturer[]; lectures: Lecture[] })[] = [];
     for (const uni_id of uni_ids) {
-      const module = await sqlHandler.getModule(semester, uni_id);
+      const module = await sqlClient.getModule(semester.value, uni_id);
       if (module) {
         modules.push(module);
       }
@@ -173,7 +176,9 @@ export default class CalendarButton extends ButtonInteractionModel {
           }
 
           events.push({
-            title: `${lecture.type}: ${module.displayName}${lecture.group ? ' [' + lecture.group + ']' : ''}`,
+            title: `${LectureTypeToString.get(lecture.type) ?? ''}: ${module.name}${
+              lecture.group ? ' [' + lecture.group + ']' : ''
+            }`,
             start: start,
             end: end,
             description: `ID: ${module.id}\nProfessor: ${module.professor}`,
@@ -210,3 +215,17 @@ export default class CalendarButton extends ButtonInteractionModel {
     }
   }
 }
+
+export const StringToLectureType = new Map<string, LectureType>([
+  ['Vorlesung', LectureType.Lecture],
+  ['Seminar', LectureType.Seminar],
+  ['Praktikum', LectureType.Internship],
+  ['Übung', LectureType.Exercise]
+]);
+
+export const LectureTypeToString = new Map<LectureType, string>([
+  [LectureType.Lecture, 'Vorlesung'],
+  [LectureType.Seminar, 'Seminar'],
+  [LectureType.Internship, 'Praktikum'],
+  [LectureType.Exercise, 'Übung']
+]);

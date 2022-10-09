@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Channel {
+  channel_id String @id
+  uni_id  String
+}
+
+model Config {
+  label String  @id
+  value String?
+}
+
+enum LectureType {
+  Lecture
+  Seminar
+  Internship
+  Exercise
+}
+
+model Lecture {
+  id        Int     @id @default(autoincrement())
+  Module    Module  @relation(fields: [module_id], references: [id])
+  module_id Int
+  type      LectureType
+  time      String?
+  day       String?
+  place     String?
+  group     String?
+  @@unique([module_id, type, time, day, group])
+}
+
+model Lecturer {
+  Module    Module @relation(fields: [module_id], references: [id])
+  module_id Int
+  name      String
+
+  @@id([module_id, name])
+}
+
+model Module {
+  id        Int        @id @default(autoincrement())
+  semester  String
+  date      BigInt
+  uni_id    String
+  name      String?
+  professor String?
+  lecturers Lecturer[]
+  lectures  Lecture[]
+
+  @@unique([semester, uni_id], map: "UC_Module")
+}
+
+model Role {
+  role_id String @id
+  uni_id  String @unique
+}

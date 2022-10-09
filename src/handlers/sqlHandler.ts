@@ -1,195 +1,219 @@
 import { Logger, WARNINGLEVEL } from 'discord.ts-architecture';
-import mysql from 'mysql';
-import { Lecture } from '../model/Lecture';
-import { Module } from '../model/Module';
+import { Config, Lecture, Lecturer, Module, PrismaClient, Role } from '@prisma/client';
 
-export default class SqlHandler {
-  private pool: mysql.Pool;
+class SqlHandler {
+  private prisma: PrismaClient;
   constructor() {
-    this.pool = mysql.createPool({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      port: parseInt(process.env.DB_PORT ?? '3306', 10),
-      database: process.env.DB_DATABASE,
-      multipleStatements: true,
-      connectionLimit: 5
-    });
+    this.prisma = new PrismaClient();
   }
 
-  /**
-   * Initializes the DataBas
-   */
-  public async initDB() {
-    let conn: mysql.PoolConnection | undefined;
+  private async prismaQuery<T>(
+    query: () => Promise<T>,
+    error: (err: unknown) => void,
+    defaultReturn?: T,
+    forceDisconnect?: boolean
+  ): Promise<T | null> {
+    let returnValue: T | null = defaultReturn ?? null;
     try {
-      conn = await new Promise<mysql.PoolConnection>((resolve, reject) => {
-        this.pool.getConnection((err, conn) => {
-          if (err) reject(err);
-          else resolve(conn);
-        });
-      });
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `module` (`id` INT AUTO_INCREMENT, `semester` VARCHAR(255) NOT NULL, `date` BIGINT NOT NULL, `uni_id` VARCHAR(255) NOT NULL, `name` VARCHAR(255), `professor` VARCHAR(255), PRIMARY KEY(`id`), CONSTRAINT UC_Module UNIQUE (`semester`, `uni_id`))'
-      );
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `lecturer`(`module_id` INT NOT NULL, `name` VARCHAR(255) NOT NULL, PRIMARY KEY (`module_id`, `name`))'
-      );
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `lecture` (`id` INT AUTO_INCREMENT, `module_id` INT NOT NULL, `type` VARCHAR(255), `time` VARCHAR(255), `day` VARCHAR(255), `place` VARCHAR(255), `group` VARCHAR(255), PRIMARY KEY(`id`))'
-      );
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `channel` (`channel_id` VARCHAR(255) NOT NULL, `module_id` VARCHAR(255) NOT NULL, PRIMARY KEY (`channel_id`))'
-      );
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `role` (`role_id` VARCHAR(255) NOT NULL, `uni_id` VARCHAR(255) NOT NULL, PRIMARY KEY (`role_id`, `uni_id`))'
-      );
-      await this.sqlQuery(
-        conn,
-        'CREATE TABLE IF NOT EXISTS `config` (`label` VARCHAR(255) NOT NULL, `value` VARCHAR(255), PRIMARY KEY(`label`))'
-      );
+      returnValue = await query();
     } catch (err) {
-      Logger.exception('Error creating tables', err, WARNINGLEVEL.ERROR);
-      throw err;
+      error(err);
     } finally {
-      if (conn) conn.release();
+      if (forceDisconnect) {
+        await this.prisma.$disconnect();
+      }
     }
-    Logger.info('Initialized Database');
+    return returnValue;
   }
 
-  public async setConfig(label: string, value?: string) {
-    return await this.sqlHandle(
-      async (conn) => {
-        const found = await this.sqlQuery(conn, 'SELECT `value` FROM `config` WHERE `label` = ?', label);
-        if (found && found[0]) {
-          await this.sqlQuery(conn, 'UPDATE `config` SET `value` = ? WHERE `label` = ?', value, label);
-          return;
+  public async setConfig(config: Config) {
+    return await this.prismaQuery(
+      async () => {
+        const foundValue = await this.prisma.config.findUnique({
+          where: {
+            label: config.label
+          }
+        });
+        if (foundValue) {
+          await this.prisma.config.update({
+            where: {
+              label: config.label
+            },
+            data: {
+              value: config.value
+            }
+          });
+        } else {
+          await this.prisma.config.create({
+            data: config
+          });
         }
-        await this.sqlQuery(conn, 'INSERT INTO `config` (`label`, `value`) VALUES (?, ?)', label, value);
       },
       (error) => {
-        Logger.exception('Error setting config', error, WARNINGLEVEL.ERROR, label, value);
-      },
-      undefined
+        Logger.error('Error setting Config', error, config);
+      }
     );
   }
 
-  public async getConfig(label: string): Promise<string | undefined> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const found = await this.sqlQuery(conn, 'SELECT `value` FROM `config` WHERE `label` = ?', label);
-        if (found && found[0]) {
-          return found[0].value;
-        }
-        return undefined;
+  public async getConfig(label: string) {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.config.findUnique({ where: { label: label } });
       },
       (error) => {
         Logger.exception('Error getting config', error, WARNINGLEVEL.ERROR, label);
-      },
-      undefined
-    );
-  }
-  public async setRole(role: string, uni_id: string) {
-    return await this.sqlHandle(
-      async (conn) => {
-        const found = await this.sqlQuery(
-          conn,
-          'SELECT * FROM `role` WHERE `role_id` = ? OR `uni_id` = ?',
-          role,
-          uni_id
-        );
-        if (found && found[0]) {
-          await this.sqlQuery(conn, 'DELETE FROM `role` WHERE `role_id` = ? OR `uni_id` = ?', role, uni_id);
-        }
-        await this.sqlQuery(conn, 'INSERT INTO `role` (`role_id`, `uni_id`) VALUES (?, ?)', role, uni_id);
-      },
-      (error) => {
-        Logger.exception('Error setting role', error, WARNINGLEVEL.ERROR, role, uni_id);
-      },
-      undefined
+      }
     );
   }
 
-  public async getUniIdFromRole(role: string): Promise<string | undefined> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const found = await this.sqlQuery(conn, 'SELECT `uni_id` FROM `role` WHERE `role_id` = ?', role);
-        if (found && found[0]) {
-          return found[0].uni_id;
+  public async setRole(role: Role) {
+    return await this.prismaQuery(
+      async () => {
+        const found = await this.prisma.role.findUnique({
+          where: {
+            role_id: role.role_id
+          }
+        });
+        if (found) {
+          await this.prisma.role.update({
+            where: {
+              role_id: role.role_id
+            },
+            data: {
+              uni_id: role.uni_id
+            }
+          });
+        } else {
+          await this.prisma.role.create({
+            data: role
+          });
         }
-        return undefined;
+        return true;
       },
       (error) => {
-        Logger.exception('Error retrieving role', error, WARNINGLEVEL.ERROR, role);
+        Logger.exception('Error setting role', error, WARNINGLEVEL.ERROR, role);
       },
-      undefined
+      false
     );
   }
 
-  public async setModules(modules: Module[]) {
-    return await this.sqlHandle(
-      async (conn) => {
+  public async getRole(role_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.role.findUnique({
+          where: {
+            role_id: role_id
+          }
+        });
+      },
+      (error) => {
+        Logger.exception('Error retrieving role', error, WARNINGLEVEL.ERROR, role_id);
+      }
+    );
+  }
+
+  public async setModules(modules: (Module & { lectures: Lecture[]; lecturers: Lecturer[] })[]) {
+    return await this.prismaQuery(
+      async () => {
+        const now = new Date().getTime();
         modules.forEach(async (module) => {
           // check if module exist
-          let mod = await this.sqlQuery(
-            conn,
-            'SELECT `id` FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-            module.semester,
-            module.id
-          );
+          const foundModule = await this.prisma.module.findUnique({
+            where: {
+              semester_uni_id: {
+                semester: module.semester,
+                uni_id: module.semester
+              }
+            }
+          });
           // if module exists
-          if (mod && mod[0]) {
-            await this.sqlQuery(
-              conn,
-              'UPDATE `module` SET `name` = ?, `professor` = ?, `date` = ? WHERE `id` = ?',
-              module.displayName,
-              module.professor,
-              module.date.getTime(),
-              mod[0].id
-            );
-            await this.sqlQuery(conn, 'DELETE FROM `lecturer` WHERE `module_id` = ?', mod[0].id);
-            await this.sqlQuery(conn, 'DELETE FROM `lecture` WHERE `module_id` = ?', mod[0].id);
+          if (foundModule) {
+            const disconnectAllModule = this.prisma.module.update({
+              where: {
+                id: foundModule.id
+              },
+              data: {
+                lecturers: {
+                  set: []
+                },
+                lectures: {
+                  set: []
+                }
+              }
+            });
+            const connectOrCreateModule = this.prisma.module.update({
+              where: {
+                id: foundModule.id
+              },
+              data: {
+                date: now,
+                name: module.name,
+                professor: module.professor,
+                lectures: {
+                  connectOrCreate: module.lectures.map((lecture: Lecture) => ({
+                    where: {
+                      module_id_type_time_day_group: {
+                        module_id: foundModule.id,
+                        type: lecture.type,
+                        time: lecture.time ?? '',
+                        day: lecture.day ?? '',
+                        group: lecture.group ?? ''
+                      }
+                    },
+                    create: {
+                      type: lecture.type,
+                      time: lecture.time,
+                      day: lecture.time,
+                      place: lecture.place,
+                      group: lecture.group
+                    }
+                  }))
+                },
+                lecturers: {
+                  connectOrCreate: module.lecturers.map((lecturer: Lecturer) => ({
+                    where: {
+                      module_id_name: {
+                        module_id: foundModule.id,
+                        name: lecturer.name
+                      }
+                    },
+                    create: {
+                      name: lecturer.name
+                    }
+                  }))
+                }
+              }
+            });
+            await this.prisma.$transaction([disconnectAllModule, connectOrCreateModule]);
           } else {
-            await this.sqlQuery(
-              conn,
-              'INSERT INTO `module` (`semester`, `date`, `uni_id`, `name`, `professor`) VALUES (?, ?, ?, ?, ?)',
-              module.semester,
-              module.date.getTime(),
-              module.id,
-              module.displayName,
-              module.professor
-            );
-            mod = await this.sqlQuery(
-              conn,
-              'SELECT `id` FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-              module.semester,
-              module.id
-            );
+            await this.prisma.module.create({
+              data: {
+                semester: module.semester,
+                uni_id: module.uni_id,
+                date: now,
+                name: module.name,
+                professor: module.professor,
+                lecturers: {
+                  createMany: {
+                    data: module.lecturers.map((lecturer: Lecturer) => ({
+                      name: lecturer.name
+                    }))
+                  }
+                },
+                lectures: {
+                  createMany: {
+                    data: module.lectures.map((lecture: Lecture) => ({
+                      type: lecture.type,
+                      time: lecture.time,
+                      day: lecture.day,
+                      place: lecture.place,
+                      group: lecture.group
+                    }))
+                  }
+                }
+              }
+            });
           }
-          const sqlLecturers = module.lecturers.map((lecturer) => [mod[0].id, lecturer]);
-          try {
-            await this.sqlQuery(conn, 'INSERT INTO `lecturer` (`module_id`, `name`) VALUES ?', sqlLecturers);
-          } catch {
-            // ignore
-          }
-          const sqlLectures = module.lectures.map((lecture) => [
-            mod[0].id,
-            lecture.type,
-            lecture.time ?? null,
-            lecture.day,
-            lecture.place,
-            lecture.group ?? null
-          ]);
-          await this.sqlQuery(
-            conn,
-            'INSERT INTO `lecture` (`module_id`, `type`, `time`, `day`, `place`, `group`) VALUES ?',
-            sqlLectures
-          );
         });
         return true;
       },
@@ -199,261 +223,216 @@ export default class SqlHandler {
       false
     );
   }
-  public async getSemesterDate(semester: string): Promise<number | undefined> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const date = await this.sqlQuery(conn, 'SELECT `date` FROM `module` WHERE `semester` = ?', semester);
-        if (date && date[0]) {
-          return date[0].date;
-        }
-        return undefined;
+
+  public async getSemesterDate(semester: string) {
+    return await this.prismaQuery(
+      async () => {
+        const module = await this.prisma.module.findFirst({
+          where: {
+            semester: semester
+          }
+        });
+        return module ? new Date(Number(module.date)) : null;
       },
       (error) => {
         Logger.exception('Error retrieving semester date', error, WARNINGLEVEL.ERROR);
-      },
-      undefined
+      }
     );
   }
-  public async getLectures(semester: string, uni_id: string): Promise<Lecture[]> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const mod = await this.sqlQuery(
-          conn,
-          'SELECT `id` FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-          semester,
-          uni_id
-        );
-        if (!mod || !mod[0]) {
-          throw Error('Unknown module');
-        }
-        const lectures = await this.sqlQuery(conn, 'SELECT * FROM `lecture` WHERE `module_id` = ?', mod[0].id);
-        if (!lectures) throw Error('No lectures found');
-        const returnLectures: Lecture[] = [];
-        lectures.forEach((lecture: any) => {
-          returnLectures.push(new Lecture(lecture.type, lecture.day, lecture.place, lecture.time, lecture.group));
+
+  public async getLectures(semester: string, uni_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        const module = await this.prisma.module.findUnique({
+          where: {
+            semester_uni_id: {
+              semester: semester,
+              uni_id: uni_id
+            }
+          },
+          include: {
+            lectures: true
+          }
         });
-        return returnLectures;
+        return module ? module.lectures : [];
       },
       (error) => {
         Logger.exception('Error retrieving lectures', error, WARNINGLEVEL.ERROR);
-      },
-      new Array<Lecture>()
+      }
     );
   }
-  public async getLecturers(semester: string, uni_id: string): Promise<string[]> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const mod = await this.sqlQuery(
-          conn,
-          'SELECT `id` FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-          semester,
-          uni_id
-        );
-        if (!mod || !mod[0]) {
-          throw Error('Unknown module');
-        }
-        const lecturers = await this.sqlQuery(conn, 'SELECT `name` FROM `lecturers` WHERE `module_id` = ?', mod[0].id);
-        if (!lecturers) throw Error('No lecturers found');
-        return lecturers.map((l: any) => l.name);
+  public async getLecturers(semester: string, uni_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        const module = await this.prisma.module.findUnique({
+          where: {
+            semester_uni_id: {
+              semester: semester,
+              uni_id: uni_id
+            }
+          },
+          include: {
+            lecturers: true
+          }
+        });
+        return module ? module.lecturers.map((l) => l.name) : [];
       },
       (error) => {
-        Logger.exception('Error retrieving lecturers', error, WARNINGLEVEL.ERROR);
-      },
-      new Array<string>()
+        Logger.exception('Error retrieving lectures', error, WARNINGLEVEL.ERROR);
+      }
     );
   }
-  public async getModule(semester: string, uni_id: string): Promise<Module | undefined> {
-    return await this.sqlHandle<Module | undefined>(
-      async (conn) => {
-        const sqlModule = await this.sqlQuery(
-          conn,
-          'SELECT * FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-          semester,
-          uni_id
-        );
-        if (!sqlModule || !sqlModule[0]) throw Error('Module not found');
-        const sqlLecturers = await this.sqlQuery(
-          conn,
-          'SELECT `name` FROM `lecturer` WHERE `module_id` = ?',
-          sqlModule[0].id
-        );
-        const sqlLectures = await this.sqlQuery(conn, 'SELECT * FROM `lecture` WHERE `module_id` = ?', sqlModule[0].id);
-        if (!sqlLectures) throw Error('Lectures not found');
-        const lectures: Lecture[] = sqlLectures.map(
-          (sqlLecture: any) =>
-            new Lecture(sqlLecture.type, sqlLecture.day, sqlLecture.place, sqlLecture.time, sqlLecture.group)
-        );
-        return new Module(
-          uni_id,
-          sqlModule[0].name,
-          sqlModule[0].semester,
-          new Date(sqlModule[0].date),
-          sqlModule[0].professor,
-          lectures,
-          sqlLecturers.map((l: any) => l.name)
-        );
+  public async getModule(semester: string, uni_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.module.findUnique({
+          where: {
+            semester_uni_id: {
+              semester: semester,
+              uni_id: uni_id
+            }
+          },
+          include: {
+            lecturers: true,
+            lectures: true
+          }
+        });
       },
       (error) => {
         Logger.exception('Error retrieving Module', error, WARNINGLEVEL.ERROR);
-      },
-      undefined
+      }
     );
   }
 
-  public async getModuleFromId(module_id: number): Promise<Module | undefined> {
-    return await this.sqlHandle<Module | undefined>(
-      async (conn) => {
-        const sqlModule = await this.sqlQuery(conn, 'SELECT * FROM `module` WHERE `id` = ?', module_id);
-        if (!sqlModule || !sqlModule[0]) throw Error('Unknown module');
-        const sqlLecturers = await this.sqlQuery(
-          conn,
-          'SELECT `name` FROM `lecturer` WHERE `module_id` = ?',
-          sqlModule[0].id
-        );
-        const sqlLectures = await this.sqlQuery(conn, 'SELECT * FROM `lecture` WHERE `module_id` = ?', sqlModule[0].id);
-        if (!sqlLectures) throw Error('Lectures not found');
-        const lectures: Lecture[] = sqlLectures.map(
-          (sqlLecture: any) =>
-            new Lecture(sqlLecture.type, sqlLecture.day, sqlLecture.place, sqlLecture.time, sqlLecture.group)
-        );
-        return new Module(
-          sqlModule[0].uni_id,
-          sqlModule[0].name,
-          sqlModule[0].semester,
-          new Date(sqlModule[0].date),
-          sqlModule[0].professor,
-          lectures,
-          sqlLecturers.map((l: any) => l.name)
-        );
+  public async getModuleFromId(module_id: number) {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.module.findUnique({
+          where: {
+            id: module_id
+          },
+          include: {
+            lecturers: true,
+            lectures: true
+          }
+        });
       },
       (error) => {
-        Logger.exception('Error retrieving module', error, WARNINGLEVEL.ERROR, module_id);
-      },
-      undefined
+        Logger.exception('Error retrieving Module', error, WARNINGLEVEL.ERROR);
+      }
     );
   }
 
-  public async getModuleIdFromChannel(channel: string): Promise<number | undefined> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const module_id = await this.sqlQuery(
-          conn,
-          'SELECT `module_id` FROM `channel` WHERE `channel_id` = ?',
-          channel
+  public async getMostRecentModule(uni_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.module.findFirst({
+          where: {
+            uni_id: uni_id
+          },
+          orderBy: {
+            date: 'desc'
+          },
+          include: {
+            lectures: true,
+            lecturers: true
+          }
+        });
+      },
+      (error) => {
+        Logger.exception('Error retrieving most recent module', error, WARNINGLEVEL.ERROR, uni_id);
+      }
+    );
+  }
+
+  public async getModuleIdFromChannel(channel: string) {
+    return await this.prismaQuery(
+      async () => {
+        return (
+          (
+            await this.prisma.channel.findUnique({
+              where: {
+                channel_id: channel
+              }
+            })
+          )?.uni_id ?? null
         );
-        if (!module_id || !module_id[0]) throw Error('Channel not found');
-        return module_id[0].module_id;
       },
       () => {
         // Logger.exception('Error retrieving channel', error, WARNINGLEVEL.ERROR);
-      },
-      undefined
+      }
     );
   }
 
-  public async setChannel(channel: string, uni_id: string, semester: string) {
-    return await this.sqlHandle(
-      async (conn) => {
-        const module_id = await this.sqlQuery(
-          conn,
-          'SELECT `id` FROM `module` WHERE `semester` = ? AND `uni_id` = ?',
-          semester,
-          uni_id
-        );
-        if (!module_id || !module_id[0]) throw new Error('Unknown module');
-        const channelId = await this.sqlQuery(
-          conn,
-          'SELECT `channel_id` FROM `channel` WHERE `channel_id` = ?',
-          channel
-        );
-        if (!channelId || !channelId[0]) {
-          await this.sqlQuery(
-            conn,
-            'INSERT INTO `channel` (`channel_id`, `module_id`) VALUES (?, ?)',
-            channel,
-            module_id[0].id
-          );
+  public async setChannel(channel: string, uni_id: string) {
+    return await this.prismaQuery(
+      async () => {
+        const foundChannel = await this.prisma.channel.findUnique({
+          where: {
+            channel_id: channel
+          }
+        });
+        if (foundChannel) {
+          await this.prisma.channel.update({
+            where: {
+              channel_id: channel
+            },
+            data: {
+              uni_id: uni_id
+            }
+          });
         } else {
-          await this.sqlQuery(
-            conn,
-            'UPDATE `channel` SET `module_id` = ? WHERE `channel_id` = ?',
-            module_id[0].id,
-            channel
-          );
+          await this.prisma.channel.create({
+            data: {
+              channel_id: channel,
+              uni_id: uni_id
+            }
+          });
         }
         return true;
       },
       (error) => {
-        Logger.exception('Error setting channel', error, WARNINGLEVEL.ERROR, channel, uni_id, semester, error);
+        Logger.exception('Error setting channel', error, WARNINGLEVEL.ERROR, channel, uni_id);
       },
       false
     );
   }
 
-  public async getModuleNameAndUniId(): Promise<{ name: string; uni_id: string }[]> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const sqlResult = await this.sqlQuery(conn, 'SELECT DISTINCT name, uni_id FROM module');
-        const result: { name: string; uni_id: string }[] = [];
-        sqlResult.forEach((module: any) => {
-          result.push({ name: module.name, uni_id: module.uni_id });
+  public async getModuleNameAndUniIds() {
+    return await this.prismaQuery(
+      async () => {
+        return await this.prisma.module.findMany({
+          select: {
+            uni_id: true,
+            name: true
+          },
+          distinct: ['uni_id', 'name']
         });
-        return result;
       },
       (error) => {
         Logger.exception('Error retrieving modules', error, WARNINGLEVEL.ERROR);
-      },
-      []
+      }
     );
   }
-  public async getSemesters(): Promise<string[]> {
-    return await this.sqlHandle(
-      async (conn) => {
-        const sqlResult = await this.sqlQuery(conn, 'SELECT DISTINCT semester FROM module');
-        const result: string[] = [];
-        sqlResult.forEach((semester: any) => {
-          result.push(semester.semester);
-        });
-        return result;
+
+  public async getSemesters() {
+    return await this.prismaQuery(
+      async () => {
+        return (
+          await this.prisma.module.findMany({
+            select: {
+              semester: true
+            },
+            distinct: ['semester']
+          })
+        )?.map((m) => m.semester);
       },
       (error) => {
         Logger.exception('Error retrieving semesters', error, WARNINGLEVEL.ERROR);
-      },
-      []
+      }
     );
   }
-
-  private async sqlHandle<T>(
-    normal: (conn: mysql.PoolConnection) => Promise<T>,
-    error: (err: unknown) => void,
-    inital: T
-  ) {
-    let returnValue: T = inital;
-    let conn;
-    try {
-      conn = await new Promise<mysql.PoolConnection>((resolve, reject) => {
-        this.pool.getConnection((err, conn) => {
-          if (err) reject(err);
-          else resolve(conn);
-        });
-      });
-      returnValue = await normal(conn);
-    } catch (e) {
-      error(e);
-    } finally {
-      if (conn) conn.release();
-    }
-    return returnValue;
-  }
-
-  private sqlQuery(conn: mysql.PoolConnection, query: string, ...values: any[]): Promise<any> {
-    return new Promise((resolve, reject) => {
-      conn.query(query, values, (err, res) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(res);
-      });
-    });
-  }
 }
+
+const sqlClient = new SqlHandler();
+export { sqlClient, SqlHandler };

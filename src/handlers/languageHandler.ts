@@ -48,7 +48,7 @@ export default class LanguageHandler {
         description: 'Setzt das Modul für diesen Channel',
         error: {
           title: 'Error',
-          description: 'Das Modul $1 vom Semester $0 existiert nicht.',
+          description: 'Das Modul $0 existiert nicht.',
           internal: 'Ein interner Fehler ist aufgetreten beim setzen des Moduls.'
         },
         buttons: {
@@ -56,7 +56,7 @@ export default class LanguageHandler {
         },
         success: {
           title: 'Erfolgreich gesetzt',
-          description: 'Das Module $1 aus dem Semester $0 wurde erfolgreich mit diesem Kanal verbunden.'
+          description: 'Das Module $0 wurde erfolgreich mit diesem Kanal verbunden.'
         }
       },
       linkrole: {
@@ -101,20 +101,22 @@ export default class LanguageHandler {
         module_placeholder: 'Modul',
         set_module: 'Setzen'
       },
-      setModuleTwo: {
+      calendar: {
+        success: {
+          title: 'Stundenplan erstellt',
+          description: 'Dein Stundenplan wurde erstellt und ist im Anhang.'
+        }
+      }
+    },
+    selectionMenu: {
+      setModule: {
         error: {
           not_set: 'Einige Infos sind nicht gesetzt',
           title: 'Error'
         },
         success: {
           title: 'Modul gesetzt',
-          description: 'Channel erfolgreich mit Module $1 vom Semester $0 verbunden.'
-        }
-      },
-      calendar: {
-        success: {
-          title: 'Stundenplan erstellt',
-          description: 'Dein Stundenplan wurde erstellt und ist im Anhang.'
+          description: 'Channel erfolgreich mit Module $0 verbunden.'
         }
       }
     },
