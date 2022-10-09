@@ -3,6 +3,7 @@ import { CommandInteractionModel, MessageHandler } from 'discord.ts-architecture
 import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
 import { Lecture, Lecturer, LectureType, Module } from '@prisma/client';
+import { LectureTypeToString } from '../buttons/calendarButton';
 
 export default class PrintCommand extends CommandInteractionModel {
   constructor() {
@@ -46,7 +47,7 @@ export default class PrintCommand extends CommandInteractionModel {
         inline = false;
       }
       lectureCategories.push({
-        title: lecture.type + (lecture.group ? ', ' + lecture.group : ''),
+        title: LectureTypeToString.get(lecture.type) + (lecture.group ? ', ' + lecture.group : ''),
         text: LanguageHandler.replaceArgs(LanguageHandler.language.commands.print.success.lecture, [
           lecture.time ?? '',
           lecture.day ?? '',
