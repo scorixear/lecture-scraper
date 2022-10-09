@@ -38,7 +38,11 @@ export default class SetModuleCommand extends AutocompleteInteractionModel {
     const modules = await sqlClient.getModuleNameAndUniIds();
     selection =
       modules
-        ?.filter((m) => m.uni_id.toLowerCase().startsWith(focusedOption.value.toLowerCase()))
+        ?.filter(
+          (m) =>
+            m.uni_id.toLowerCase().startsWith(focusedOption.value.toLowerCase()) ||
+            (m.name?.toLowerCase().startsWith(focusedOption.value.toLowerCase()) ?? false)
+        )
         ?.map((m) => ({ value: m.uni_id, name: m.name ?? '' })) ?? [];
 
     if (selection.length > 25) {

@@ -36,11 +36,12 @@ export default class LinkRoleCommand extends AutocompleteInteractionModel {
     const modules = await sqlClient.getModuleNameAndUniIds();
     interaction.respond(
       modules
-        ?.filter((m) => m.uni_id.toLowerCase().startsWith(focused.toLowerCase()))
-        ?.map((m) => ({
-          name: m.name ?? '',
-          value: m.uni_id
-        })) ?? []
+        ?.filter(
+          (m) =>
+            m.uni_id.toLowerCase().startsWith(focused.toLowerCase()) ||
+            (m.name?.toLowerCase().startsWith(focused.toLowerCase()) ?? false)
+        )
+        ?.map((m) => ({ value: m.uni_id, name: m.name ?? '' })) ?? []
     );
   }
 
