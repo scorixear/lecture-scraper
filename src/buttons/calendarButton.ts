@@ -174,13 +174,18 @@ export class CalendarButton extends ButtonInteractionModel {
             start = [startYear, startMonth, startDay];
             end = [endYear, endMonth, endDay ?? 0];
           }
-
+          console.log(start);
+          console.log(end);
           events.push({
             title: `${LectureTypeToString.get(lecture.type) ?? ''}: ${module.name}${
               lecture.group ? ' [' + lecture.group + ']' : ''
             }`,
             start: start,
+            startInputType: 'local',
+            startOutputType: 'local',
             end: end,
+            endInputType: 'local',
+            endOutputType: 'local',
             description: `ID: ${module.id}\nProfessor: ${module.professor}`,
             location: `${lecture.place}`,
             status: 'CONFIRMED',
@@ -198,7 +203,13 @@ export class CalendarButton extends ButtonInteractionModel {
         resolve(value);
       });
     });
-    fs.writeFileSync(`./src/assets/${interaction.id}.ics`, value ?? '');
+    const lines = value.split('\n');
+    lines.forEach((line, index) => {
+      if (line.startsWith('DTSTART:')) {
+        lines[index] = 'TZID:Europe/Berlin\n' + line;
+      }
+    });
+    fs.writeFileSync(`./src/assets/${interaction.id}.ics`, lines.join('\n') ?? '');
 
     try {
       await MessageHandler.reply({
