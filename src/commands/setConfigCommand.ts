@@ -1,5 +1,6 @@
 import { AutocompleteInteraction, CacheType, ChatInputCommandInteraction, SlashCommandStringOption } from 'discord.js';
 import { AutocompleteInteractionModel, MessageHandler } from 'discord.ts-architecture';
+import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
 
 export default class SetConfigCommand extends AutocompleteInteractionModel {
@@ -46,7 +47,7 @@ export default class SetConfigCommand extends AutocompleteInteractionModel {
     const label = interaction.options.getString('label', true);
     const value = interaction.options.getString('value', true);
 
-    await sqlHandler.setConfig(label, value);
+    await sqlClient.setConfig({ label, value });
     await MessageHandler.reply({
       interaction,
       title: LanguageHandler.language.commands.setconfig.success.title,

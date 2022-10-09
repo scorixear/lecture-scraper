@@ -1,5 +1,6 @@
 import { ButtonInteraction, CacheType } from 'discord.js';
 import { ButtonInteractionModel, MessageHandler } from 'discord.ts-architecture';
+import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
 
 export default class RetryChannelButton extends ButtonInteractionModel {
@@ -14,10 +15,9 @@ export default class RetryChannelButton extends ButtonInteractionModel {
       return;
     }
 
-    const semester = interaction.customId.split('_')[1];
-    const uni_id = interaction.customId.split('_')[2];
+    const uni_id = interaction.customId.split('_')[1];
 
-    const success = await sqlHandler.setChannel(interaction.channelId, uni_id, semester);
+    const success = await sqlClient.setChannel(interaction.channelId, uni_id);
     if (!success) {
       await MessageHandler.replyError({
         interaction,
@@ -30,7 +30,6 @@ export default class RetryChannelButton extends ButtonInteractionModel {
       interaction,
       title: LanguageHandler.language.commands.setModule.success.title,
       description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.setModule.success.description, [
-        semester,
         uni_id
       ]),
       ephemeral: true

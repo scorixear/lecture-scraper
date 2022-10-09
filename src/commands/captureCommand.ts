@@ -10,7 +10,8 @@ import { CommandInteractionModel, Logger, MessageHandler, WARNINGLEVEL } from 'd
 import { WebScraper } from '../handlers/webScraper';
 import config from '../config';
 import LanguageHandler from '../handlers/languageHandler';
-import { Module } from '../model/Module';
+import { sqlClient } from '../handlers/sqlHandler';
+import { Lecture, Lecturer, Module } from '@prisma/client';
 
 declare const webScraper: WebScraper;
 
@@ -46,7 +47,7 @@ export default class CaptureCommand extends CommandInteractionModel {
 
     const semester = interaction.options.getString('semester', true);
     const force = interaction.options.getBoolean('force', false);
-    const semesterDate = await sqlHandler.getSemesterDate(semester);
+    const semesterDate = await sqlClient.getSemesterDate(semester);
     if (!force) {
       if (semesterDate) {
         await MessageHandler.replyError({
@@ -54,7 +55,7 @@ export default class CaptureCommand extends CommandInteractionModel {
           title: LanguageHandler.language.commands.capture.error.title,
           description: LanguageHandler.replaceArgs(LanguageHandler.language.commands.capture.error.already_existent, [
             semester,
-            new Date(semesterDate).toDateString()
+            semesterDate.toDateString()
           ]),
           components: [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -77,12 +78,12 @@ export default class CaptureCommand extends CommandInteractionModel {
       color: 0xffd500,
       ephemeral: true
     });
-    let modules: Module[] | undefined;
+    let modules: (Module & { lectures: Lecture[]; lecturers: Lecturer[] })[] | undefined;
     try {
       modules = await webScraper.scrapeLectures(config.websiteUrl, semester);
       if (!modules) throw new Error('WebScraper returned undefined');
       modules = CaptureCommand.uniq_fast(modules);
-      await sqlHandler.setModules(modules);
+      await sqlClient.setModules(modules);
     } catch (e) {
       Logger.exception('Webscraper failed', e, WARNINGLEVEL.ERROR, semester);
       await MessageHandler.followUp({
@@ -103,15 +104,15 @@ export default class CaptureCommand extends CommandInteractionModel {
     });
   }
 
-  public static uniq_fast(a: Module[]): Module[] {
+  public static uniq_fast<T extends { uni_id: string }>(a: T[]): T[] {
     const seen = new Map<string, number>();
-    const out: Module[] = [];
+    const out: T[] = [];
     const len = a.length;
     let j = 0;
     for (let i = 0; i < len; i++) {
       const item = a[i];
-      if (seen.get(item.id) !== 1) {
-        seen.set(item.id, 1);
+      if (seen.get(item.uni_id) !== 1) {
+        seen.set(item.uni_id, 1);
         out[j++] = item;
       }
     }

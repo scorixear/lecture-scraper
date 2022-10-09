@@ -6,6 +6,7 @@ import {
   SlashCommandStringOption
 } from 'discord.js';
 import { AutocompleteInteractionModel, MessageHandler } from 'discord.ts-architecture';
+import { sqlClient } from '../handlers/sqlHandler';
 import LanguageHandler from '../handlers/languageHandler';
 
 export default class LinkRoleCommand extends AutocompleteInteractionModel {
@@ -32,14 +33,14 @@ export default class LinkRoleCommand extends AutocompleteInteractionModel {
 
   override async handleAutocomplete(interaction: AutocompleteInteraction<CacheType>): Promise<void> {
     const focused = interaction.options.getFocused();
-    const modules = await sqlHandler.getModuleNameAndUniId();
+    const modules = await sqlClient.getModuleNameAndUniIds();
     interaction.respond(
       modules
-        .filter((m) => m.uni_id.toLowerCase().startsWith(focused.toLowerCase()))
-        .map((m) => ({
-          name: m.name,
+        ?.filter((m) => m.uni_id.toLowerCase().startsWith(focused.toLowerCase()))
+        ?.map((m) => ({
+          name: m.name ?? '',
           value: m.uni_id
-        }))
+        })) ?? []
     );
   }
 
@@ -52,7 +53,7 @@ export default class LinkRoleCommand extends AutocompleteInteractionModel {
 
     const role = interaction.options.getRole('role', true);
     const module = interaction.options.getString('module', true);
-    await sqlHandler.setRole(role.id, module);
+    await sqlClient.setRole({ role_id: role.id, uni_id: module });
 
     await MessageHandler.reply({
       interaction,
