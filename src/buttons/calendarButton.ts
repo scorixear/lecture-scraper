@@ -174,8 +174,6 @@ export class CalendarButton extends ButtonInteractionModel {
             start = [startYear, startMonth, startDay];
             end = [endYear, endMonth, endDay ?? 0];
           }
-          console.log(start);
-          console.log(end);
           events.push({
             title: `${LectureTypeToString.get(lecture.type) ?? ''}: ${module.name}${
               lecture.group ? ' [' + lecture.group + ']' : ''
