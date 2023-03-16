@@ -34,15 +34,21 @@ export default class LinkRoleCommand extends AutocompleteInteractionModel {
   override async handleAutocomplete(interaction: AutocompleteInteraction<CacheType>): Promise<void> {
     const focused = interaction.options.getFocused();
     const modules = await sqlClient.getModuleNameAndUniIds();
-    interaction.respond(
+
+    const selection =
       modules
         ?.filter(
           (m) =>
             m.uni_id.toLowerCase().startsWith(focused.toLowerCase()) ||
             (m.name?.toLowerCase().startsWith(focused.toLowerCase()) ?? false)
         )
-        ?.map((m) => ({ value: m.uni_id, name: m.name ?? '' })) ?? []
-    );
+        ?.map((m) => ({ value: m.uni_id, name: m.name ?? '' })) ?? [];
+
+    if (selection.length > 25) {
+      interaction.respond(selection.splice(25));
+    } else {
+      interaction.respond(selection);
+    }
   }
 
   override async handle(interaction: ChatInputCommandInteraction<CacheType>): Promise<void> {
