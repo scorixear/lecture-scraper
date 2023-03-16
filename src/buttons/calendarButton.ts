@@ -49,7 +49,7 @@ export class CalendarButton extends ButtonInteractionModel {
 
     Logger.info(`Found ${modules.length} modules for ` + (interaction.member as GuildMember | undefined)?.displayName);
 
-    const value = await new Promise<string>((resolve, reject) => {
+    const value = await new Promise<string | undefined>((resolve, reject) => {
       const events: EventAttributes[] = [];
       modules.forEach((module) => {
         module.lectures.forEach((lecture) => {
@@ -101,12 +101,8 @@ export class CalendarButton extends ButtonInteractionModel {
             startMonth = parseInt(lecture.day.split(' - ')[0].split('.')[1]);
             startDay = parseInt(lecture.day.split(' - ')[0].split('.')[0]);
             // configure end day to be same day if lecture time is given
-            const copyDate = new Date(startYear, startMonth, startDay);
-            const recurrenceDate = new Date(
-              parseInt(lecture.day.split(' - ')[1].split('.')[2]),
-              parseInt(lecture.day.split(' - ')[1].split('.')[1]),
-              parseInt(lecture.day.split(' - ')[1].split('.')[0])
-            );
+            const copyDate = new Date(startYear, startMonth - 1, startDay);
+            const recurrenceDate = new Date(startYear, startMonth - 1, startDay);
             // if not given, configure to be full-day event
             if (lecture.time === '-') {
               copyDate.setDate(copyDate.getDate() + 1);
@@ -115,12 +111,37 @@ export class CalendarButton extends ButtonInteractionModel {
             }
             // set enddate
             endYear = copyDate.getFullYear();
-            endMonth = copyDate.getMonth();
+            endMonth = copyDate.getMonth() + 1;
             endDay = copyDate.getDate();
             // parse end event
             // set reccurenceRule to be event timespan
             recurrenceRule = `FREQ=DAILY;INTERVAL=1;UNTIL=${recurrenceDate.getFullYear()}${
-              recurrenceDate.getMonth() < 10 ? '0' + recurrenceDate.getMonth() : recurrenceDate.getMonth()
+              recurrenceDate.getMonth() < 9 ? '0' + (recurrenceDate.getMonth() + 1) : recurrenceDate.getMonth() + 1
+            }${recurrenceDate.getDate() < 10 ? '0' + recurrenceDate.getDate() : recurrenceDate.getDate()}T000000Z`;
+            // if format is single day
+          } else if (lecture.day.match(/\d\d\.\d\d\./g)) {
+            // read in start day
+            startMonth = parseInt(lecture.day.split('.')[1]);
+            startDay = parseInt(lecture.day.split('.')[0]);
+            // set end day to be same day if lecture time is given
+            const copyDate = new Date(startYear, startMonth - 1, startDay);
+            const recurrenceDate = new Date(startYear, startMonth - 1, startDay);
+            // if not given, configure to be full-day event
+            if (lecture.time === '-') {
+              copyDate.setDate(copyDate.getDate() + 1);
+            } else {
+              recurrenceDate.setDate(recurrenceDate.getDate() + 1);
+            }
+            // set enddate
+            endYear = copyDate.getFullYear();
+            endMonth = copyDate.getMonth() + 1;
+            endDay = copyDate.getDate();
+
+            // parse end event
+            // set reccurenceRule to be event timespan
+            console.log('Recurrence', recurrenceDate.toISOString());
+            recurrenceRule = `FREQ=DAILY;INTERVAL=1;UNTIL=${recurrenceDate.getFullYear()}${
+              recurrenceDate.getMonth() < 9 ? '0' + (recurrenceDate.getMonth() + 1) : recurrenceDate.getMonth() + 1
             }${recurrenceDate.getDate() < 10 ? '0' + recurrenceDate.getDate() : recurrenceDate.getDate()}T000000Z`;
             // format is not understandable, skip this event
           } else {
@@ -128,6 +149,7 @@ export class CalendarButton extends ButtonInteractionModel {
           }
 
           if (!recurrenceRule) {
+            console.log(endDate.toISOString(), endDate.getMonth());
             recurrenceRule = `FREQ=WEEKLY;BYDAY=${dayOfWeek};INTERVAL=1;UNTIL=${endDate.getFullYear()}${
               endDate.getMonth() < 9 ? '0' + (endDate.getMonth() + 1) : endDate.getMonth() + 1
             }${endDate.getDate() < 10 ? '0' + endDate.getDate() : endDate.getDate()}T000000Z`;
@@ -152,12 +174,15 @@ export class CalendarButton extends ButtonInteractionModel {
             endHour = parseInt(lecture.time.split('-')[1].split(':')[0]);
             endMinute = parseInt(lecture.time.split('-')[1].split(':')[1]);
             // if the regex is not matching means full day event, if we haven't already set the days above
-          } else if (!lecture.day.match(/\d\d\.\d\d\.\d\d\d\d - \d\d\.\d\d\.\d\d\d\d/g)) {
+          } else if (
+            !lecture.day.match(/\d\d\.\d\d\.\d\d\d\d - \d\d\.\d\d\.\d\d\d\d/g) &&
+            !lecture.day.match(/\d\d\.\d\d\./g)
+          ) {
             // copy the date to add one day (full day events), this will possibly change the month value or year value
             const copyDate = new Date(startDate.getTime());
             copyDate.setDate(startDate.getDate() + 1);
             endYear = copyDate.getFullYear();
-            endMonth = copyDate.getMonth();
+            endMonth = copyDate.getMonth() + 1;
             endDay = copyDate.getDate();
             startHour = undefined;
             startMinute = undefined;
@@ -184,7 +209,7 @@ export class CalendarButton extends ButtonInteractionModel {
             end: end,
             endInputType: 'local',
             endOutputType: 'local',
-            description: `ID: ${module.id}\nProfessor: ${module.professor}`,
+            description: `ID: ${module.uni_id}\nProfessor: ${module.professor}`,
             location: `${lecture.place}`,
             status: 'CONFIRMED',
             categories: [lecture.type],
@@ -201,7 +226,7 @@ export class CalendarButton extends ButtonInteractionModel {
         resolve(value);
       });
     });
-    const lines = value.split('\n');
+    const lines = value?.split('\n') ?? [];
     lines.forEach((line, index) => {
       if (line.startsWith('DTSTART:')) {
         lines[index] = 'TZID:Europe/Berlin\n' + line;

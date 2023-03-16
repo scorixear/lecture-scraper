@@ -21,7 +21,7 @@ export default class CaptureCommand extends CommandInteractionModel {
       new SlashCommandStringOption()
         .setName('semester')
         .setDescription(LanguageHandler.language.commands.capture.options.semester)
-        .addChoices({ name: 'ws2022', value: 'ws2022' })
+        .addChoices({ name: 'ss2023', value: 'ss2023' })
         .setRequired(true),
       new SlashCommandBooleanOption()
         .setName('force')
