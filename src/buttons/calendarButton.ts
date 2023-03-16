@@ -102,7 +102,11 @@ export class CalendarButton extends ButtonInteractionModel {
             startDay = parseInt(lecture.day.split(' - ')[0].split('.')[0]);
             // configure end day to be same day if lecture time is given
             const copyDate = new Date(startYear, startMonth - 1, startDay);
-            const recurrenceDate = new Date(startYear, startMonth - 1, startDay);
+            const recurrenceDate = new Date(
+              parseInt(lecture.day.split(' - ')[1].split('.')[2]),
+              parseInt(lecture.day.split(' - ')[1].split('.')[1]) - 1,
+              parseInt(lecture.day.split(' - ')[1].split('.')[0])
+            );
             // if not given, configure to be full-day event
             if (lecture.time === '-') {
               copyDate.setDate(copyDate.getDate() + 1);
@@ -115,7 +119,7 @@ export class CalendarButton extends ButtonInteractionModel {
             endDay = copyDate.getDate();
             // parse end event
             // set reccurenceRule to be event timespan
-            recurrenceRule = `FREQ=DAILY;INTERVAL=1;UNTIL=${recurrenceDate.getFullYear()}${
+            recurrenceRule = `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;INTERVAL=1;UNTIL=${recurrenceDate.getFullYear()}${
               recurrenceDate.getMonth() < 9 ? '0' + (recurrenceDate.getMonth() + 1) : recurrenceDate.getMonth() + 1
             }${recurrenceDate.getDate() < 10 ? '0' + recurrenceDate.getDate() : recurrenceDate.getDate()}T000000Z`;
             // if format is single day
