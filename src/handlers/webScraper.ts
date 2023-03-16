@@ -1,6 +1,6 @@
 import { Lecture, Lecturer, Module } from '@prisma/client';
 import puppeteer from 'puppeteer';
-import { Browser } from 'puppeteer';
+import { Browser, ElementHandle } from 'puppeteer';
 import { StringToLectureType } from '../buttons/calendarButton';
 import LanguageHandler from './languageHandler';
 
@@ -47,9 +47,8 @@ export class WebScraper {
       const displayName = moduleInfos[i] as string | null;
       let moduleId = moduleInfos[i + 1] as string | null;
       const professor = moduleInfos[i + 2] as string | null;
-      const lectureTypeElements = moduleInfos[i + 3] as puppeteer.ElementHandle<Element>[];
-      const lecturesElements = moduleInfos[i + 4] as puppeteer.ElementHandle<Element>[];
-      console.log(displayName);
+      const lectureTypeElements = moduleInfos[i + 3] as ElementHandle<Element>[];
+      const lecturesElements = moduleInfos[i + 4] as ElementHandle<Element>[];
       if (!displayName || displayName.trim() === '') continue;
       if (!moduleId || moduleId.trim() === '') {
         moduleId = displayName;

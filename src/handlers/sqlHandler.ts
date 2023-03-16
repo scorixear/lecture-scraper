@@ -122,69 +122,79 @@ class SqlHandler {
             where: {
               semester_uni_id: {
                 semester: module.semester,
-                uni_id: module.semester
+                uni_id: module.uni_id
               }
             }
           });
           // if module exists
           if (foundModule) {
-            const disconnectAllModule = this.prisma.module.update({
+            const deleteLecturers = this.prisma.lecturer.deleteMany({
               where: {
-                id: foundModule.id
-              },
-              data: {
-                lecturers: {
-                  set: []
-                },
-                lectures: {
-                  set: []
-                }
+                module_id: foundModule.id
               }
             });
-            const connectOrCreateModule = this.prisma.module.update({
+
+            const deleteLectures = this.prisma.lecture.deleteMany({
+              where: {
+                module_id: foundModule.id
+              }
+            });
+
+            const deleteModule = this.prisma.module.delete({
               where: {
                 id: foundModule.id
-              },
+              }
+            });
+
+            const createModule = this.prisma.module.create({
               data: {
+                semester: module.semester,
+                uni_id: module.uni_id,
                 date: now,
                 name: module.name,
                 professor: module.professor,
+                lecturers: {
+                  createMany: {
+                    data: module.lecturers.map((lecturer: Lecturer) => ({
+                      name: lecturer.name
+                    }))
+                  }
+                },
                 lectures: {
-                  connectOrCreate: module.lectures.map((lecture: Lecture) => ({
-                    where: {
-                      module_id_type_time_day_group: {
-                        module_id: foundModule.id,
-                        type: lecture.type,
-                        time: lecture.time ?? '',
-                        day: lecture.day ?? '',
-                        group: lecture.group ?? ''
-                      }
-                    },
-                    create: {
+                  createMany: {
+                    data: module.lectures.map((lecture: Lecture) => ({
                       type: lecture.type,
                       time: lecture.time,
-                      day: lecture.time,
+                      day: lecture.day,
                       place: lecture.place,
                       group: lecture.group
-                    }
-                  }))
-                },
-                lecturers: {
-                  connectOrCreate: module.lecturers.map((lecturer: Lecturer) => ({
-                    where: {
-                      module_id_name: {
-                        module_id: foundModule.id,
-                        name: lecturer.name
-                      }
-                    },
-                    create: {
-                      name: lecturer.name
-                    }
-                  }))
+                    }))
+                  }
                 }
               }
             });
-            await this.prisma.$transaction([disconnectAllModule, connectOrCreateModule]);
+            let retries = 0;
+            const MAX_RETRIES = 5;
+
+            while (retries <= MAX_RETRIES) {
+              try {
+                await this.prisma.$transaction([deleteLecturers, deleteLectures, deleteModule, createModule]);
+                break; // exit the while-loop on successful transaction
+              } catch (e: any) {
+                if (retries === MAX_RETRIES) {
+                  throw e;
+                } else {
+                  // Retry the transaction if it fails due to conflict
+                  if (e.code === 'P2034') {
+                    retries++;
+                    Logger.info(`Retrying transaction, retry count: ${retries}`);
+                    continue;
+                  } else {
+                    throw e;
+                  }
+                }
+              }
+            }
           } else {
             await this.prisma.module.create({
               data: {

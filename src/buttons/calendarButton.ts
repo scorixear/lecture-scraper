@@ -139,7 +139,6 @@ export class CalendarButton extends ButtonInteractionModel {
 
             // parse end event
             // set reccurenceRule to be event timespan
-            console.log('Recurrence', recurrenceDate.toISOString());
             recurrenceRule = `FREQ=DAILY;INTERVAL=1;UNTIL=${recurrenceDate.getFullYear()}${
               recurrenceDate.getMonth() < 9 ? '0' + (recurrenceDate.getMonth() + 1) : recurrenceDate.getMonth() + 1
             }${recurrenceDate.getDate() < 10 ? '0' + recurrenceDate.getDate() : recurrenceDate.getDate()}T000000Z`;
@@ -149,7 +148,6 @@ export class CalendarButton extends ButtonInteractionModel {
           }
 
           if (!recurrenceRule) {
-            console.log(endDate.toISOString(), endDate.getMonth());
             recurrenceRule = `FREQ=WEEKLY;BYDAY=${dayOfWeek};INTERVAL=1;UNTIL=${endDate.getFullYear()}${
               endDate.getMonth() < 9 ? '0' + (endDate.getMonth() + 1) : endDate.getMonth() + 1
             }${endDate.getDate() < 10 ? '0' + endDate.getDate() : endDate.getDate()}T000000Z`;

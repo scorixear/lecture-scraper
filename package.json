@@ -39,7 +39,7 @@
     "dotenv": "^16.0.3",
     "ics": "^2.40.0",
     "mysql": "^2.18.1",
-    "puppeteer": "^18.0.5"
+    "puppeteer": "^19.7.5"
   },
   "devDependencies": {
     "@types/mysql": "^2.15.21",
