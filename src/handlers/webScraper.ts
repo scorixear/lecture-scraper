@@ -30,12 +30,11 @@ export class WebScraper {
     await page?.goto(LanguageHandler.replaceArgs(url, [semester]));
     // Selecting all base units
 
-    const moduleElements = await page?.$$('.n-studgang-unit .n-unit');
+    const moduleElements = await page?.$$('.MODUL .n-unit');
     const modulePromises: Promise<any>[] = [];
     moduleElements.forEach((module) => {
       modulePromises.push(module.$eval('.n-unit-head .n-unit-title .title', (element) => element.textContent)); // displayName
       modulePromises.push(module.$eval('.n-unit-head .n-unit-modul', (element) => element.textContent)); // id
-      modulePromises.push(module.$eval('.n-unit-head .n-unit-title .n-unit-dozent', (element) => element.textContent)); // professor (potential undefined)
       modulePromises.push(module.$$('.lecture-real-title')); // Lecture Types
       modulePromises.push(module.$$('.s-termin-entry')); // lectures
     });
@@ -43,10 +42,9 @@ export class WebScraper {
     const moduleInfos = await Promise.all(modulePromises);
     const modules: (Module & { lectures: Lecture[]; lecturers: Lecturer[] })[] = [];
     const date = new Date();
-    for (let i = 0; i < moduleInfos.length; i += 5) {
+    for (let i = 0; i < moduleInfos.length; i += 4) {
       const displayName = moduleInfos[i] as string | null;
       let moduleId = moduleInfos[i + 1] as string | null;
-      const professor = moduleInfos[i + 2] as string | null;
       const lectureTypeElements = moduleInfos[i + 3] as ElementHandle<Element>[];
       const lecturesElements = moduleInfos[i + 4] as ElementHandle<Element>[];
       if (!displayName || displayName.trim() === '') continue;
@@ -59,7 +57,7 @@ export class WebScraper {
         name: displayName,
         semester,
         date: date.getTime() as unknown as bigint,
-        professor: professor,
+        professor: '',
         lecturers: new Array<Lecturer>(),
         lectures: new Array<Lecture>()
       };
